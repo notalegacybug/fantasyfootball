@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+body{width:270px;margin:0;padding:14px;background:#0d1b1e;color:#e8e4d9;
+     font:14px/1.45 -apple-system,"Segoe UI",system-ui,sans-serif}
+h1{font-size:14px;margin:0 0 10px}
+#dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#c85a3c;
+     margin-right:7px;vertical-align:middle}
+#dot.on{background:#5fa88a}
+.k{font-family:ui-monospace,Menlo,monospace;font-size:19px;font-weight:600}
+.l{color:#8fa39f;font-size:12px}
+.row{display:flex;justify-content:space-between;align-items:baseline;
+     padding:6px 0;border-bottom:1px solid #24403f}
+p{color:#8fa39f;font-size:12px;margin:11px 0 0}
+</style></head><body>
+<h1><span id="dot"></span><span id="status">checking local board…</span></h1>
+<div class="row"><span class="l">events captured</span><span class="k" id="events">–</span></div>
+<div class="row"><span class="l">websocket frames</span><span class="k" id="ws">–</span></div>
+<div class="row"><span class="l">mode</span><span class="k" id="mode">–</span></div>
+<p id="hint">Open your ESPN draft room, then run a mock draft for ten picks.</p>
+<script src="popup.js"></script>
+</body></html>

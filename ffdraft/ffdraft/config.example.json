@@ -1,0 +1,16 @@
+{
+  "season": 2026,
+  "fantasypros_api_key": "PUT_YOUR_KEY_HERE",
+  "my_draft_slot": 4,
+  "espn": {
+    "league_id": "PUT_YOUR_LEAGUE_ID_HERE",
+    "espn_s2": "",
+    "swid": ""
+  },
+  "format_override": {
+    "teams": 10,
+    "slots": {"QB":1,"RB":2,"WR":2,"TE":1,"FLEX":1,"DST":1,"K":1,"OP":0},
+    "bench": 7,
+    "ppr": 1.0
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "Draft board bridge",
+  "version": "0.1.0",
+  "description": "Taps the ESPN draft room's own data feed and relays it to your local draft board.",
+
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://fantasy.espn.com/*",
+    "http://127.0.0.1:8777/*"
+  ],
+
+  "content_scripts": [
+    {
+      "matches": ["https://fantasy.espn.com/football/draft*",
+                  "https://fantasy.espn.com/football/mockdraft*",
+                  "https://fantasy.espn.com/football/*draft*"],
+      "js": ["inject.js"],
+      "world": "MAIN",
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://fantasy.espn.com/football/draft*",
+                  "https://fantasy.espn.com/football/mockdraft*",
+                  "https://fantasy.espn.com/football/*draft*"],
+      "js": ["bridge.js"],
+      "world": "ISOLATED",
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Draft board bridge"
+  }
+}

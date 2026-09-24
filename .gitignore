@@ -1,0 +1,22 @@
+# NOTE: git does not support trailing comments on a pattern line.
+# Every comment here must be on its own line.
+
+# --- secrets: never commit ---
+# Holds live ESPN espn_s2 / SWID session cookies, which are full ESPN account
+# access, not fantasy-only. Recreate from config.example.json on each machine.
+config.json
+
+# --- local state and caches: regenerable, machine-specific ---
+# written after every pick; `python app.py reset` clears it
+draft_state.json
+# rebuild with `python app.py prefetch` (or `python app.py demo`)
+snapshot.db
+__pycache__/
+*.py[cod]
+
+# --- tooling / session artifacts ---
+.superpowers/
+.venv/
+venv/
+.env
+.DS_Store

@@ -336,6 +336,159 @@ def cached_fetch(db_path: str, key: str, fetch, ttl_minutes: float = CACHE_TTL_M
         con.close()
 
 
+def _espn_get(url: str, params, espn_s2: str = "", swid: str = "",
+              headers: dict = None, timeout: float = 25.0) -> dict:
+    """Cookie-header auth is the only thing ESPN accepts for a private league (spec 2.2)."""
+    cookies = {"espn_s2": espn_s2, "SWID": swid} if espn_s2 and swid else {}
+    r = httpx.get(url, params=params, cookies=cookies, headers=headers or {},
+                  timeout=timeout, follow_redirects=True)
+    r.raise_for_status()
+    return r.json()
+
+
+def fetch_espn_league(league_id: str, season: int, espn_s2: str = "", swid: str = "",
+                      week: int = None) -> dict:
+    """Teams, rosters (with per-player stats), matchups and settings in one call.
+    Repeated `view` params are how ESPN combines views; httpx needs a list of tuples."""
+    params = [("view", v) for v in ("mTeam", "mRoster", "mMatchupScore", "mSettings")]
+    if week is not None:
+        params.append(("scoringPeriodId", week))
+    return _espn_get(f"{ESPN_BASE}/{season}/segments/0/leagues/{league_id}",
+                     params, espn_s2, swid)
+
+
+# lineupSlot ids for the six real positions -- ESPN_SLOTS numbering, not ESPN_POSITION_ID.
+FREE_AGENT_SLOT_IDS = [0, 2, 4, 6, 16, 17]
+
+
+def fetch_espn_free_agents(league_id: str, season: int, week: int, espn_s2: str = "",
+                           swid: str = "", limit: int = 150) -> dict:
+    """Unrostered players in THIS league, most-owned first, with week-N stats attached."""
+    flt = {"players": {
+        "filterStatus": {"value": ["FREEAGENT", "WAIVERS"]},
+        "filterSlotIds": {"value": FREE_AGENT_SLOT_IDS},
+        "sortPercOwned": {"sortPriority": 1, "sortAsc": False},
+        "limit": limit,
+    }}
+    return _espn_get(f"{ESPN_BASE}/{season}/segments/0/leagues/{league_id}",
+                     [("view", "kona_player_info"), ("scoringPeriodId", week)],
+                     espn_s2, swid, headers={"x-fantasy-filter": json.dumps(flt)})
+
+
+def fetch_espn_pro_schedule(season: int) -> dict:
+    """Full NFL schedule by week. Public, no auth. Raw, unlike fetch_espn_pro_teams,
+    because the season tool needs opponents and kickoffs, not just byes."""
+    return _espn_get(f"{ESPN_BASE}/{season}", [("view", "proTeamSchedules")], timeout=15.0)
+
+
+def pick_stat(stats, season: int, period: int, source: int):
+    """The appliedTotal for one exact (season, scoringPeriodId, statSourceId) triple.
+    source: 0 = actual, 1 = projected. period: 0 = full season, N = week N."""
+    for s in stats or []:
+        if (s.get("seasonId") == season and s.get("scoringPeriodId") == period
+                and s.get("statSourceId") == source):
+            return _float_or_none(s.get("appliedTotal"))
+    return None
+
+
+def slot_name(slot_id: int) -> str:
+    """Fail loudly: a silently mis-slotted roster is how a zero-point player gets started."""
+    name = ESPN_SLOTS.get(slot_id)
+    if name is None:
+        raise ValueError(f"Unknown ESPN lineupSlotId {slot_id}. ESPN may have renumbered "
+                         f"its slots -- update ESPN_SLOTS in sources.py.")
+    return name
+
+
+def parse_player(p: dict, season: int, week: int) -> dict:
+    own = p.get("ownership") or {}
+    return {
+        "player_id": p.get("id"),
+        "name": p.get("fullName") or "",
+        "pos": ESPN_POSITION_ID.get(p.get("defaultPositionId")),
+        "pro_team_id": p.get("proTeamId"),
+        # Composite ids (3 = RB/WR, 5 = WR/TE, ...) are dropped: FLEX (23) already
+        # expresses the only multi-position slot this league uses.
+        "eligible": sorted({ESPN_SLOTS[s] for s in p.get("eligibleSlots", [])
+                            if s in ESPN_SLOTS}),
+        "proj_week": pick_stat(p.get("stats"), season, week, 1),
+        "proj_ros": pick_stat(p.get("stats"), season, 0, 1),
+        "injury": p.get("injuryStatus"),
+        "pct_started": _float_or_none(own.get("percentStarted")),
+        "pct_change": _float_or_none(own.get("percentChange")),
+        "outlook": p.get("seasonOutlook"),
+    }
+
+
+def parse_league(raw: dict, week: int = None) -> dict:
+    """Flatten a fetch_espn_league response into plain dicts. No domain logic here --
+    that lives in league.py, same split as build_snapshot -> engine.py."""
+    season = raw["seasonId"]
+    week = raw["scoringPeriodId"] if week is None else week
+
+    slots = {}
+    counts = raw.get("settings", {}).get("rosterSettings", {}).get("lineupSlotCounts", {})
+    for raw_id, count in counts.items():
+        if count:
+            slots[slot_name(int(raw_id))] = count
+
+    teams = []
+    for t in raw.get("teams", []):
+        roster = []
+        for e in (t.get("roster") or {}).get("entries", []):
+            p = (e.get("playerPoolEntry") or {}).get("player") or {}
+            roster.append({**parse_player(p, season, week), "slot": slot_name(e["lineupSlotId"])})
+        rec = (t.get("record") or {}).get("overall") or {}
+        name = t.get("name") or f"{t.get('location', '')} {t.get('nickname', '')}".strip()
+        teams.append({
+            "id": t["id"], "name": name, "abbrev": t.get("abbrev"),
+            "owners": t.get("owners", []),
+            "wins": rec.get("wins", 0), "losses": rec.get("losses", 0),
+            "ties": rec.get("ties", 0),
+            "points_for": rec.get("pointsFor", 0.0),
+            "points_against": rec.get("pointsAgainst", 0.0),
+            "roster": roster,
+        })
+
+    schedule = []
+    for m in raw.get("schedule", []):
+        home, away = m.get("home") or {}, m.get("away") or {}
+        schedule.append({
+            "period": m.get("matchupPeriodId"),
+            "home": home.get("teamId"), "away": away.get("teamId"),   # away is None on a bye
+            "home_pts": home.get("totalPoints"), "away_pts": away.get("totalPoints"),
+        })
+
+    return {
+        "season": season, "week": week, "current_week": raw.get("scoringPeriodId"),
+        "matchup_period": raw.get("status", {}).get("currentMatchupPeriod"),
+        "slots": slots, "teams": teams, "schedule": schedule,
+    }
+
+
+def parse_free_agents(raw: dict, season: int, week: int) -> list:
+    return [{**parse_player(e.get("player") or {}, season, week), "status": e.get("status")}
+            for e in raw.get("players", [])]
+
+
+def parse_pro_schedule(raw: dict) -> dict:
+    out = {}
+    for t in raw.get("settings", {}).get("proTeams", []):
+        if not t.get("id"):
+            continue          # id 0 is ESPN's "FA" pseudo-team
+        games = {}
+        for wk, gs in (t.get("proGamesByScoringPeriod") or {}).items():
+            for g in gs:
+                home = g.get("homeProTeamId") == t["id"]
+                games[int(wk)] = {
+                    "opp": g.get("awayProTeamId") if home else g.get("homeProTeamId"),
+                    "home": home, "kickoff_ms": g.get("date"),
+                }
+        out[t["id"]] = {"abbrev": t.get("abbrev"), "bye": _int_or_none(t.get("byeWeek")),
+                        "games": games}
+    return out
+
+
 # --------------------------------------------------------------------------
 
 def _float_or_none(v):

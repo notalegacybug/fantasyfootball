@@ -84,9 +84,77 @@ def test_cache():
     return ok
 
 
+def synthetic_player(pid=1, pos_id=2, slots=(2, 3, 23, 20, 21), week=3, season=2026):
+    return {
+        "id": pid, "fullName": f"Player {pid}", "defaultPositionId": pos_id,
+        "proTeamId": 12, "eligibleSlots": list(slots), "injuryStatus": "ACTIVE",
+        "ownership": {"percentStarted": 55.5, "percentChange": 1.2},
+        "seasonOutlook": "note",
+        "stats": [
+            # distractors first, so a first-match bug picks the wrong one
+            {"seasonId": season, "scoringPeriodId": week, "statSourceId": 0, "appliedTotal": 99.0},
+            {"seasonId": season - 1, "scoringPeriodId": week, "statSourceId": 1, "appliedTotal": 88.0},
+            {"seasonId": season, "scoringPeriodId": week - 1, "statSourceId": 1, "appliedTotal": 77.0},
+            {"seasonId": season, "scoringPeriodId": week, "statSourceId": 1, "appliedTotal": 12.3},
+            {"seasonId": season, "scoringPeriodId": 0, "statSourceId": 1, "appliedTotal": 180.4},
+        ],
+    }
+
+
+def test_parsers():
+    ok = True
+    print("\n[3] Stat selection picks the exact (season, period, source) triple")
+    p = sources.parse_player(synthetic_player(), season=2026, week=3)
+    ok &= check("weekly projection is (1, week N)", p["proj_week"] == 12.3)
+    ok &= check("season projection is (1, period 0)", p["proj_ros"] == 180.4)
+    ok &= check("missing stat is None, not 0", sources.pick_stat([], 2026, 3, 1) is None)
+
+    print("\n[4] Slot mapping")
+    ok &= check("position from defaultPositionId", p["pos"] == "RB")
+    ok &= check("eligible keeps known slots, drops composite id 3",
+                p["eligible"] == ["BENCH", "FLEX", "IR", "RB"])
+    ok &= check("known lineupSlotId maps", sources.slot_name(23) == "FLEX")
+    try:
+        sources.slot_name(99)
+        ok &= check("unknown lineupSlotId fails loudly", False)
+    except ValueError as e:
+        ok &= check("unknown lineupSlotId fails loudly", "99" in str(e))
+
+    print("\n[5] League parse on a minimal synthetic payload")
+    raw = {
+        "seasonId": 2026, "scoringPeriodId": 3, "status": {"currentMatchupPeriod": 3},
+        "settings": {"rosterSettings": {"lineupSlotCounts": {"2": 2, "23": 2, "20": 7, "3": 0}}},
+        "teams": [{"id": 3, "name": "Mine", "abbrev": "ME", "owners": ["{A}"],
+                   "record": {"overall": {"wins": 2, "losses": 0, "ties": 0,
+                                          "pointsFor": 250.5, "pointsAgainst": 200.0}},
+                   "roster": {"entries": [{"lineupSlotId": 2,
+                                           "playerPoolEntry": {"player": synthetic_player()}}]}}],
+        "schedule": [{"matchupPeriodId": 3, "home": {"teamId": 3, "totalPoints": 0},
+                      "away": {"teamId": 5, "totalPoints": 0}}],
+    }
+    lg = sources.parse_league(raw)
+    ok &= check("week defaults to scoringPeriodId", lg["week"] == 3)
+    ok &= check("slot counts mapped, zero-count unknowns ignored",
+                lg["slots"] == {"RB": 2, "FLEX": 2, "BENCH": 7})
+    ok &= check("roster row carries slot + projection",
+                lg["teams"][0]["roster"][0]["slot"] == "RB"
+                and lg["teams"][0]["roster"][0]["proj_week"] == 12.3)
+    ok &= check("record parsed", lg["teams"][0]["wins"] == 2)
+    ok &= check("schedule parsed", lg["schedule"][0]["away"] == 5)
+
+    raw["settings"]["rosterSettings"]["lineupSlotCounts"]["98"] = 1
+    try:
+        sources.parse_league(raw)
+        ok &= check("unknown slot with nonzero count fails loudly", False)
+    except ValueError:
+        ok &= check("unknown slot with nonzero count fails loudly", True)
+    return ok
+
+
 def main():
     ok = True
     ok &= test_cache()
+    ok &= test_parsers()
     print("\n" + ("ALL CHECKS PASSED" if ok else "SOMETHING FAILED"))
     return 0 if ok else 1
 

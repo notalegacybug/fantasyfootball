@@ -289,6 +289,54 @@ def load_snapshot(db_path: str):
 
 
 # --------------------------------------------------------------------------
+# In-season: raw ESPN responses, cached
+# --------------------------------------------------------------------------
+
+# How stale ESPN data may be before refetch. Short enough that Sunday-morning
+# injury news lands before lock; long enough that a dev session doesn't hammer ESPN.
+CACHE_TTL_MINUTES = 30
+
+# Separate from SCHEMA on purpose: build_snapshot drops and rebuilds `players`,
+# and a draft prefetch must never wipe in-season data.
+CACHE_SCHEMA = """
+CREATE TABLE IF NOT EXISTS espn_cache (
+    key        TEXT PRIMARY KEY,
+    fetched_at REAL NOT NULL,
+    body       TEXT NOT NULL
+);
+"""
+
+
+def cached_fetch(db_path: str, key: str, fetch, ttl_minutes: float = CACHE_TTL_MINUTES,
+                 force: bool = False, now: float = None):
+    """Return (body, info). Serves the cache inside the TTL; otherwise calls fetch().
+    If the network fails and ANY cached copy exists, serves it marked 'stale' -- the
+    draft tool's works-with-wifi-off property, kept for the season tool. Callers must
+    surface info['source'] == 'stale', because an expired cookie (401) lands here too."""
+    now = time.time() if now is None else now
+    con = sqlite3.connect(db_path)
+    try:
+        con.executescript(CACHE_SCHEMA)
+        row = con.execute("SELECT fetched_at, body FROM espn_cache WHERE key = ?",
+                          (key,)).fetchone()
+        if row and not force and now - row[0] < ttl_minutes * 60:
+            return json.loads(row[1]), {"key": key, "fetched_at": row[0], "source": "cache"}
+        try:
+            body = fetch()
+        except (httpx.HTTPError, OSError) as e:
+            if row:
+                return json.loads(row[1]), {"key": key, "fetched_at": row[0],
+                                            "source": "stale", "error": str(e)}
+            raise
+        con.execute("INSERT OR REPLACE INTO espn_cache VALUES (?, ?, ?)",
+                    (key, now, json.dumps(body)))
+        con.commit()
+        return body, {"key": key, "fetched_at": now, "source": "network"}
+    finally:
+        con.close()
+
+
+# --------------------------------------------------------------------------
 
 def _float_or_none(v):
     try:

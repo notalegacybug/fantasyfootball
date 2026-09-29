@@ -20,8 +20,12 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+import httpx
+
+import season
 import sources
 from engine import Board, DraftState
+from league import build_state
 
 HERE = pathlib.Path(__file__).parent
 DB = str(HERE / "snapshot.db")
@@ -272,9 +276,76 @@ def api_undo():
     return snapshot_payload()
 
 
+@app.get("/draft")
+def draft_page():
+    return FileResponse(HERE / "static" / "index.html")
+
+
+# ---------------------------------------------------------------------------
+# Season (read-only against ESPN; loads lazily through the snapshot.db cache)
+# ---------------------------------------------------------------------------
+
+def _season_state(force: bool = False):
+    c = load_config()
+    e = c["espn"]
+    raw = sources.load_season_raw(DB, e["league_id"], c["season"],
+                                  e.get("espn_s2", ""), e.get("swid", ""), force=force)
+    return build_state(raw, e.get("swid", ""))
+
+
+def _player_json(st, p) -> dict:
+    g = p.game
+    return {
+        "id": p.player_id, "name": p.name, "pos": p.pos, "team": st.pro_abbrev(p.pro_team_id),
+        "slot": p.slot, "proj": round(p.week_pts, 1), "ros": round(p.proj_ros or 0.0, 1),
+        "injury": p.injury, "started_pct": p.pct_started, "owned_change": p.pct_change,
+        "status": p.status, "locked": p.locked, "outlook": p.outlook,
+        "game": None if g is None else {"opp": st.pro_abbrev(g["opp"]), "home": g["home"],
+                                        "kickoff_ms": g["kickoff_ms"]},
+    }
+
+
+def _team_json(t) -> dict:
+    return None if t is None else {"id": t.id, "name": t.name, "wins": t.wins,
+                                   "losses": t.losses, "ties": t.ties}
+
+
+@app.get("/api/season/week")
+def api_season_week(refresh: bool = False):
+    """The whole This-week page in one payload: the page always needs all of it."""
+    try:
+        st = _season_state(force=refresh)
+    except httpx.HTTPError as e:
+        return JSONResponse({"error": f"Couldn't reach ESPN and nothing is cached yet ({e})."},
+                            status_code=503)
+    r = season.weekly_report(st)
+    pj = lambda p: _player_json(st, p)
+    return {
+        "week": r["week"], "me": _team_json(r["me"]), "opponent": _team_json(r["opponent"]),
+        "current_total": round(r["current_total"], 1),
+        "optimal_total": round(r["optimal_total"], 1),
+        "opponent_total": None if r["opponent_total"] is None else round(r["opponent_total"], 1),
+        "problems": [{"player": pj(x["player"]), "kind": x["kind"], "message": x["message"]}
+                     for x in r["problems"]],
+        "ir_moves": [{"player": pj(m["player"]), "from": m["from"], "to": m["to"],
+                      "reason": m["reason"]} for m in r["ir_moves"]],
+        "deltas": [{"slot": d["slot"], "out": pj(d["out"]), "in": pj(d["in"]),
+                    "gain": round(d["gain"], 1)} for d in r["deltas"]],
+        "close_calls": [{"slot": c["slot"], "starter": pj(c["starter"]), "alt": pj(c["alt"]),
+                         "margin": round(c["margin"], 1)} for c in r["close_calls"]],
+        "pickups": [{"add": pj(w["add"]), "drop": pj(w["drop"]) if w["drop"] else None,
+                     "gain": round(w["gain"], 1), "ros_delta": round(w["ros_delta"], 1)}
+                    for w in r["pickups"]],
+        "starters": [{"slot": s, **pj(p)} for s, p in r["starters"]],
+        "data": {k: {"source": v["source"], "fetched_at": v["fetched_at"],
+                     "error": v.get("error")} for k, v in st.info.items()},
+        "constants": {"close_call_margin": season.CLOSE_CALL_MARGIN},
+    }
+
+
 @app.get("/")
 def index():
-    return FileResponse(HERE / "static" / "index.html")
+    return FileResponse(HERE / "static" / "season.html")
 
 
 app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")

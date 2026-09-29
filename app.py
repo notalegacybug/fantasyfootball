@@ -3,6 +3,7 @@ Draft night server. One process, no build step, reads only from the local snapsh
 
   python app.py prefetch     # run this the day before AND ~20 min before the draft
   python app.py refresh      # in-season: force-refetch ESPN league data into the cache
+  python app.py post         # in-season: send this week's moves to Discord (--dry-run to preview)
   python app.py check-espn   # verify your league settings parsed correctly
   python app.py capture-fixture  # record scrubbed ESPN responses for test_sources.py
   python app.py demo         # fake data, real math -- practice the keyboard flow
@@ -168,6 +169,25 @@ def cmd_prefetch():
         print("  Fix these before draft day or you will not see them.")
     else:
         print("  Every top-200 player matched a projection.")
+
+
+def cmd_post(dry_run: bool):
+    """Refetch ESPN, build this week's moves, send them to Discord (or print them)."""
+    import notify
+    c = load_config()
+    e = c["espn"]
+    raw = sources.load_season_raw(DB, e["league_id"], c["season"],
+                                  e.get("espn_s2", ""), e.get("swid", ""), force=True)
+    st = build_state(raw, e.get("swid", ""))
+    msg = notify.format_weekly(season.weekly_report(st), st)
+    url = (c.get("discord") or {}).get("webhook_url", "")
+    if dry_run or not url:
+        print(msg)
+        if not url:
+            print("\nNot sent: add discord.webhook_url to config.json (see config.example.json).")
+        return
+    notify.post_discord(url, msg)
+    print(f"Posted week {st.week} to Discord ({len(msg)} chars).")
 
 
 def cmd_refresh():
@@ -357,6 +377,8 @@ if __name__ == "__main__":
         cmd_prefetch()
     elif cmd == "refresh":
         cmd_refresh()
+    elif cmd == "post":
+        cmd_post(dry_run="--dry-run" in sys.argv)
     elif cmd == "check-espn":
         cmd_check_espn()
     elif cmd == "capture-fixture":

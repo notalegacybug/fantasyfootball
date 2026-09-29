@@ -3,6 +3,7 @@ Draft night server. One process, no build step, reads only from the local snapsh
 
   python app.py prefetch     # run this the day before AND ~20 min before the draft
   python app.py check-espn   # verify your league settings parsed correctly
+  python app.py capture-fixture  # record scrubbed ESPN responses for test_sources.py
   python app.py demo         # fake data, real math -- practice the keyboard flow
   python app.py reset        # clear draft state before a new draft
   python app.py serve        # draft night
@@ -50,6 +51,62 @@ def cmd_check_espn():
     print(f"  points/pass TD   {fmt.pass_td_points}")
     print(f"  total rounds   {fmt.rounds()}")
     print("\nIf any of that is wrong, fix ESPN_SLOTS in sources.py before drafting.")
+
+
+def _scrub_fixture(raw: dict, my_swid: str) -> dict:
+    """Strip ESPN identities before a response is committed. Member GUIDs are the same
+    value as a SWID cookie, and team/member names identify real people."""
+    raw = json.loads(json.dumps(raw))            # deep copy
+    fake_ids = {}
+
+    def fake(guid):
+        return fake_ids.setdefault(guid, "{00000000-0000-0000-0000-%012d}" % (len(fake_ids) + 1))
+
+    if my_swid:
+        fake(my_swid)                            # always {...-000000000001}
+    if "members" in raw:
+        raw["members"] = [{"id": fake(m["id"])} for m in raw["members"] if "id" in m]
+    for t in raw.get("teams", []):
+        t["name"], t["abbrev"] = f"Team {t['id']}", f"T{t['id']}"
+        for k in ("location", "nickname", "logo", "logoType"):
+            t.pop(k, None)
+        t["owners"] = [fake(o) for o in t.get("owners", [])]
+        if "primaryOwner" in t:
+            t["primaryOwner"] = fake(t["primaryOwner"])
+    # Size only: drop fields nothing reads. appliedTotal and variance stay (variance
+    # may drive close-call flagging in milestone 2).
+    players = [e.get("playerPoolEntry", {}).get("player", {})
+               for t in raw.get("teams", []) for e in (t.get("roster") or {}).get("entries", [])]
+    players += [e.get("player", {}) for e in raw.get("players", [])]
+    for p in players:
+        for k in ("rankings", "outlooks", "draftRanksByRankType"):
+            p.pop(k, None)
+        for s in p.get("stats", []):
+            s.pop("stats", None)
+            s.pop("appliedStats", None)
+    return raw
+
+
+def cmd_capture_fixture():
+    """Read-only: three GETs against ESPN. Writes scrubbed JSON into fixtures/."""
+    c = load_config()
+    e = c["espn"]
+    s2, swid = e.get("espn_s2", ""), e.get("swid", "")
+    league = sources.fetch_espn_league(e["league_id"], c["season"], s2, swid)
+    week = league["scoringPeriodId"]
+    fa = sources.fetch_espn_free_agents(e["league_id"], c["season"], week, s2, swid)
+    pro = sources.fetch_espn_pro_schedule(c["season"])
+
+    out = HERE / "fixtures"
+    out.mkdir(exist_ok=True)
+    for name, body in [("espn_league.json", _scrub_fixture(league, swid)),
+                       ("espn_free_agents.json", _scrub_fixture(fa, swid)),
+                       ("espn_pro_schedule.json", pro)]:
+        path = out / name
+        path.write_text(json.dumps(body, separators=(",", ":")))
+        print(f"  {path.name:26s} {path.stat().st_size // 1024:6d} KB")
+    print(f"Captured week {week}. Review for identities before committing:")
+    print("  git diff --stat fixtures/  and search the files for your name / team name.")
 
 
 def cmd_demo():
@@ -210,6 +267,8 @@ if __name__ == "__main__":
         cmd_prefetch()
     elif cmd == "check-espn":
         cmd_check_espn()
+    elif cmd == "capture-fixture":
+        cmd_capture_fixture()
     elif cmd == "demo":
         cmd_demo()
     elif cmd == "reset":

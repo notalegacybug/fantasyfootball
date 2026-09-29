@@ -377,16 +377,31 @@ def fetch_espn_free_agents(league_id: str, season: int, week: int, espn_s2: str 
 
 def fetch_espn_pro_schedule(season: int) -> dict:
     """Full NFL schedule by week. Public, no auth. Raw, unlike fetch_espn_pro_teams,
-    because the season tool needs opponents and kickoffs, not just byes."""
-    return _espn_get(f"{ESPN_BASE}/{season}", [("view", "proTeamSchedules")], timeout=15.0)
+    because the season tool needs opponents and kickoffs, not just byes.
+    Each finished game carries ~290 KB of `plays` (play-by-play); dropped here so a
+    refresh doesn't write ~20 MB into the cache for data nothing reads."""
+    raw = _espn_get(f"{ESPN_BASE}/{season}", [("view", "proTeamSchedules")], timeout=15.0)
+    for t in raw.get("settings", {}).get("proTeams", []):
+        for games in (t.get("proGamesByScoringPeriod") or {}).values():
+            for g in games:
+                g.pop("plays", None)
+    return raw
 
 
-def pick_stat(stats, season: int, period: int, source: int):
-    """The appliedTotal for one exact (season, scoringPeriodId, statSourceId) triple.
-    source: 0 = actual, 1 = projected. period: 0 = full season, N = week N."""
+# statSplitTypeId, confirmed against the week-3 2026 fixture: period 0 carries TWO
+# projections -- split 0 is rest-of-season (~2 fewer games than split 2 for 133 of
+# 166 rostered players after week 2) and split 2 is the full season. Order varies.
+SPLIT_WEEK, SPLIT_REST_OF_SEASON, SPLIT_FULL_SEASON = 1, 0, 2
+
+
+def pick_stat(stats, season: int, period: int, source: int, split: int = None):
+    """The appliedTotal for one exact (season, scoringPeriodId, statSourceId[, split]).
+    source: 0 = actual, 1 = projected. period: 0 = season, N = week N.
+    split=None matches any split -- only safe where ESPN sends just one."""
     for s in stats or []:
         if (s.get("seasonId") == season and s.get("scoringPeriodId") == period
-                and s.get("statSourceId") == source):
+                and s.get("statSourceId") == source
+                and (split is None or s.get("statSplitTypeId") == split)):
             return _float_or_none(s.get("appliedTotal"))
     return None
 
@@ -411,8 +426,8 @@ def parse_player(p: dict, season: int, week: int) -> dict:
         # expresses the only multi-position slot this league uses.
         "eligible": sorted({ESPN_SLOTS[s] for s in p.get("eligibleSlots", [])
                             if s in ESPN_SLOTS}),
-        "proj_week": pick_stat(p.get("stats"), season, week, 1),
-        "proj_ros": pick_stat(p.get("stats"), season, 0, 1),
+        "proj_week": pick_stat(p.get("stats"), season, week, 1, SPLIT_WEEK),
+        "proj_ros": pick_stat(p.get("stats"), season, 0, 1, SPLIT_REST_OF_SEASON),
         "injury": p.get("injuryStatus"),
         "pct_started": _float_or_none(own.get("percentStarted")),
         "pct_change": _float_or_none(own.get("percentChange")),

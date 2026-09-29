@@ -45,6 +45,14 @@ captured in Milestone 1 shows, and writing their code now would bake in guesses.
 2. Is `statSourceId=1, scoringPeriodId=0` a *rest-of-season* or *full-season* projection mid-season? (Matters for the trade finder, M6.)
 3. Does `teams[].owners[]` contain the same braced GUID string as the `SWID` cookie? (Needed to find "my team" from nothing but a league ID + cookie.)
 
+**Answers (week-3 capture, 2026-09-28):**
+1. **Yes.** No `scoringPeriodId` param needed; rosters carry week-N (and week N-1) projections.
+2. **Both exist, split by `statSplitTypeId`:** 0 = rest-of-season, 2 = full season, order varies. `pick_stat` now takes a `split` argument. The original plan code would have silently returned full-season.
+3. **Yes.** Exact match; exactly one team owned by the config SWID.
+4. **Spec correction (not asked):** ESPN *does* publish `variance` and `appliedTotalCeiling` per projection. Spec §5.1 says it doesn't. Discuss using it for close calls when planning M2.
+
+**Deviations from Task 3 as written:** `fetch_espn_pro_schedule` strips `plays` (~290 KB/game); the scrubber also drops `rankings`, `outlooks`, `draftRanksByRankType`, `appliedStats`; fixtures are written compact. Result: 1070 / 372 / 249 KB, down from 4.3 / 1.7 / 39 MB.
+
 ---
 
 ## File structure for Milestone 1

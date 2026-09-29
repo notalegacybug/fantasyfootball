@@ -25,6 +25,7 @@ DEDICATED = ["QB", "RB", "WR", "TE", "DST", "K"]
 # Filled after the dedicated slots, narrowest first.
 FLEX_ACCEPTS = {"FLEX": {"RB", "WR", "TE"}, "OP": {"QB", "RB", "WR", "TE"}}
 KNOWN_SLOTS = set(DEDICATED) | set(FLEX_ACCEPTS) | {"BENCH", "IR"}
+SLOT_ORDER = ["QB", "RB", "WR", "TE", "FLEX", "OP", "DST", "K"]     # how ESPN lists them
 MAX_MULTI_POSITION = 6      # 2^6 = 64 greedy passes; beyond that, stop and rethink
 
 
@@ -93,7 +94,7 @@ def best_lineup(players, slots) -> list:
         lu = _greedy(pool, open_slots, primary)
         if best is None or lineup_total(lu) > lineup_total(best):
             best = lu
-    return fixed + (best or [])
+    return sorted(fixed + (best or []), key=lambda sp: (SLOT_ORDER.index(sp[0]), -sp[1].week_pts))
 
 
 def lineup_total(lineup) -> float:

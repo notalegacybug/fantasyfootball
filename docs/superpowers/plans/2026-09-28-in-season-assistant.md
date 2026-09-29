@@ -820,3 +820,18 @@ git commit -m "feat: python app.py refresh pulls in-season ESPN data through the
 
 Milestone 1 done. Push only after the user confirms. Then write the Milestone 2 plan,
 using the recorded answers to the open questions.
+
+---
+
+## Milestones 2–4 (built together, 2026-09-28, "page only")
+
+The user asked for one weekly answer: games, start/sit, IR, drops, pickups. Built as
+`league.py` + `season.py` + `test_season.py` + `/api/season/week` + `static/season.html`.
+
+**Deviations from the spec, all small:**
+- One route `/api/season/week` instead of `/state` + `/lineup` + `/waivers`: the page always needs all three.
+- **IR moves are new** (not in the spec). ESPN lists IR in `eligibleSlots` for every player, so eligibility comes from `injuryStatus` (`IR_ELIGIBLE_STATUSES`). A healthy player in IR is flagged "Fix first".
+- **Drops use rest-of-season projection**, not weekly, so a star on bye is never cut.
+- **Multi-position players** are enumerated (try each position) because plain greedy is not exact for them. No 2026 player has two positions today.
+- **Locked players** (kickoff passed) keep their slots / can't come in.
+- Standings and Trades tabs not built yet (M5, M6).

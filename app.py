@@ -2,6 +2,7 @@
 Draft night server. One process, no build step, reads only from the local snapshot.
 
   python app.py prefetch     # run this the day before AND ~20 min before the draft
+  python app.py refresh      # in-season: force-refetch ESPN league data into the cache
   python app.py check-espn   # verify your league settings parsed correctly
   python app.py capture-fixture  # record scrubbed ESPN responses for test_sources.py
   python app.py demo         # fake data, real math -- practice the keyboard flow
@@ -165,6 +166,24 @@ def cmd_prefetch():
         print("  Every top-200 player matched a projection.")
 
 
+def cmd_refresh():
+    """In-season: force-refetch ESPN league data into the snapshot.db cache."""
+    c = load_config()
+    e = c["espn"]
+    raw = sources.load_season_raw(DB, e["league_id"], c["season"],
+                                  e.get("espn_s2", ""), e.get("swid", ""), force=True)
+    lg = sources.parse_league(raw["league"])
+    rows = [r for t in lg["teams"] for r in t["roster"]]
+    fa = raw["free_agents"].get("players", [])
+    print(f"Week {lg['week']}  (matchup period {lg['matchup_period']})")
+    print(f"  teams       {len(lg['teams'])}")
+    print(f"  rostered    {len(rows)}  with week-{lg['week']} projection: "
+          f"{sum(r['proj_week'] is not None for r in rows)}")
+    print(f"  free agents {len(fa)}")
+    for name, info in raw["info"].items():
+        print(f"  {name:13s} {info['source']}" + (f"  ({info['error']})" if "error" in info else ""))
+
+
 # ---------------------------------------------------------------------------
 # Server
 # ---------------------------------------------------------------------------
@@ -265,6 +284,8 @@ if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "serve"
     if cmd == "prefetch":
         cmd_prefetch()
+    elif cmd == "refresh":
+        cmd_refresh()
     elif cmd == "check-espn":
         cmd_check_espn()
     elif cmd == "capture-fixture":

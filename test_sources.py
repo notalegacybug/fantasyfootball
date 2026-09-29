@@ -230,11 +230,43 @@ def test_fixture():
     return ok
 
 
+def test_load_season_raw():
+    ok = True
+    print("\n[9] load_season_raw: one refresh, then cache")
+    league = load_fixture("espn_league.json")
+    fakes = {
+        "fetch_espn_league": FakeFetch(league),
+        "fetch_espn_free_agents": FakeFetch(load_fixture("espn_free_agents.json")),
+        "fetch_espn_pro_schedule": FakeFetch(load_fixture("espn_pro_schedule.json")),
+    }
+    real = {n: getattr(sources, n) for n in fakes}
+    for n, f in fakes.items():
+        setattr(sources, n, lambda *a, _f=f, **k: _f())    # ignore args, count calls
+    db = temp_db()
+    try:
+        out = sources.load_season_raw(db, "123", 2026)
+        ok &= check("first load hits every source once",
+                    all(f.calls == 1 for f in fakes.values()))
+        ok &= check("returns the league payload", out["league"]["seasonId"] == league["seasonId"])
+        sources.load_season_raw(db, "123", 2026)
+        ok &= check("second load is all cache", all(f.calls == 1 for f in fakes.values()))
+        out = sources.load_season_raw(db, "123", 2026, force=True)
+        ok &= check("force refetches everything", all(f.calls == 2 for f in fakes.values()))
+        ok &= check("info reports network on force",
+                    all(i["source"] == "network" for i in out["info"].values()))
+    finally:
+        for n, fn in real.items():
+            setattr(sources, n, fn)
+        os.remove(db)
+    return ok
+
+
 def main():
     ok = True
     ok &= test_cache()
     ok &= test_parsers()
     ok &= test_fixture()
+    ok &= test_load_season_raw()
     print("\n" + ("ALL CHECKS PASSED" if ok else "SOMETHING FAILED"))
     return 0 if ok else 1
 

@@ -504,6 +504,23 @@ def parse_pro_schedule(raw: dict) -> dict:
     return out
 
 
+def load_season_raw(db_path: str, league_id: str, season: int, espn_s2: str = "",
+                    swid: str = "", force: bool = False) -> dict:
+    """Everything the season tool reads, via the cache. The week comes from the league
+    response's scoringPeriodId -- never from the calendar (spec 4.4)."""
+    league, li = cached_fetch(db_path, f"league:{league_id}:{season}",
+                              lambda: fetch_espn_league(league_id, season, espn_s2, swid),
+                              force=force)
+    week = league["scoringPeriodId"]
+    fa, fi = cached_fetch(db_path, f"fa:{league_id}:{season}:wk{week}",
+                          lambda: fetch_espn_free_agents(league_id, season, week, espn_s2, swid),
+                          force=force)
+    pro, pi = cached_fetch(db_path, f"pro:{season}",
+                           lambda: fetch_espn_pro_schedule(season), force=force)
+    return {"league": league, "free_agents": fa, "pro_schedule": pro,
+            "info": {"league": li, "free_agents": fi, "pro_schedule": pi}}
+
+
 # --------------------------------------------------------------------------
 
 def _float_or_none(v):

@@ -35,7 +35,15 @@ def main():
     print("     " + msg.replace("\n", "\n     "))
     ok &= check("fits Discord's 2000-char limit", len(msg) <= notify.DISCORD_LIMIT)
     ok &= check("header names the week", msg.startswith("**Week 3"))
-    ok &= check("IR swap is in it", "IR" in msg)
+    ok &= check("IR swap is in it", "Sam Darnold: ir -> bench" in msg)
+
+    print("\n[1b] Empty sections still show, with an all-clear line")
+    r = season.weekly_report(st)
+    r.update(problems=[], ir_moves=[], deltas=[], pickups=[], close_calls=[])
+    empty = notify.format_weekly(r, st)
+    ok &= check("all five section headers present", all(
+        f"**{t}**" in empty for t in ("Fix first", "IR moves", "Lineup", "Pickups", "Close calls")))
+    ok &= check("says all clear instead of hiding", "- All clear." in empty)
 
     print("\n[2] Truncation keeps whole lines")
     long = notify.fit("\n".join(f"line {i} " + "x" * 50 for i in range(100)))

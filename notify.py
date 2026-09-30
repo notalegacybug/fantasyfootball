@@ -44,31 +44,28 @@ def format_weekly(r: dict, state) -> str:
     if gain > 0.05:
         lines.append(f"Best lineup: {r['optimal_total']:.1f} (+{gain:.1f} left on your bench)")
 
-    if r["problems"]:
-        lines.append("\n**Fix first**")
-        lines += [f"- {x['player'].name}: {x['message']}" for x in r["problems"]]
-    if r["ir_moves"]:
-        lines.append("\n**IR moves**")
-        lines += [f"- {m['player'].name}: {m['from'].lower()} -> {m['to'].lower()}"
-                  for m in r["ir_moves"]]
-    lines.append("\n**Lineup**")
-    if r["deltas"]:
-        lines += [f"- Start {_p(d['in'])} over {_p(d['out'])} at {d['slot']}: +{d['gain']:.1f}"
-                  for d in r["deltas"]]
-    else:
-        lines.append("- No changes. Your lineup is already the best one.")
-    lines.append("\n**Pickups**")
-    if r["pickups"]:
-        for w in r["pickups"]:
-            how = "waiver claim" if w["add"].status == "WAIVERS" else "free agent"
-            drop = f", drop {w['drop'].name}" if w["drop"] else ""
-            lines.append(f"- {w['add'].name} {w['add'].pos} ({how}){drop}: +{w['gain']:.1f} this week")
-    else:
-        lines.append("- Nobody worth adding this week.")
-    if r["close_calls"]:
-        lines.append("\n**Close calls**")
-        lines += [f"- {c['slot']}: {_p(c['starter'])} vs {_p(c['alt'])}, {c['margin']:.1f} apart"
-                  for c in r["close_calls"]]
+    # Every section always prints, with an all-clear line when empty: a missing
+    # section reads as "broken", not "nothing to do".
+    def section(title, rows, empty):
+        lines.append(f"\n**{title}**")
+        lines.extend(rows or [f"- {empty}"])
+
+    section("Fix first", [f"- {x['player'].name}: {x['message']}" for x in r["problems"]],
+            "All clear.")
+    section("IR moves", [f"- {m['player'].name}: {m['from'].lower()} -> {m['to'].lower()}"
+                         for m in r["ir_moves"]], "Nothing to move.")
+    section("Lineup", [f"- Start {_p(d['in'])} over {_p(d['out'])} at {d['slot']}: +{d['gain']:.1f}"
+                       for d in r["deltas"]],
+            "No changes. Your lineup is already the best one.")
+    pickups = []
+    for w in r["pickups"]:
+        how = "waiver claim" if w["add"].status == "WAIVERS" else "free agent"
+        drop = f", drop {w['drop'].name}" if w["drop"] else ""
+        pickups.append(f"- {w['add'].name} {w['add'].pos} ({how}){drop}: +{w['gain']:.1f} this week")
+    section("Pickups", pickups, "Nobody worth adding this week.")
+    section("Close calls", [f"- {c['slot']}: {_p(c['starter'])} vs {_p(c['alt'])}, "
+                            f"{c['margin']:.1f} apart" for c in r["close_calls"]],
+            "No start/sit decisions are close.")
     stale = [k for k, v in state.info.items() if v.get("source") == "stale"]
     if stale:
         lines.append(f"\n_ESPN unreachable; used saved data for {', '.join(stale)}._")

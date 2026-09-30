@@ -97,8 +97,8 @@ function render(d) {
     <div class="stat"><div class="l">Points left on bench</div><div class="v ${gain > 0.05 ? "" : "good"}">${pts(gain)}</div></div>
   </div>`;
 
-  if (d.problems.length)
-    h += card("Fix first", d.problems.map(x => row(who(x.player), esc(x.message))), "", "danger");
+  h += card("Fix first", d.problems.map(x => row(who(x.player), esc(x.message))),
+    `<span class="good">All clear.</span>`, d.problems.length ? "danger" : "");
 
   h += card("IR moves", d.ir_moves.map(m =>
     row(who(m.player), `${m.from.toLowerCase()} &rarr; ${m.to.toLowerCase()} · ${esc(m.reason)}`)),

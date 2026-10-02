@@ -1,0 +1,66 @@
+# Builds the Android app on GitHub's machines (the dev PC can't install a JDK or the
+# Android SDK) and publishes the APK as the newest GitHub Release, so this link always
+# serves the latest build:
+#   https://github.com/notalegacybug/fantasyfootball/releases/latest/download/fantasy-weekly.apk
+name: android
+
+on:
+  push:
+    branches: [main, in-season-m1]
+    paths: ["app/**", "fixtures/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write          # create the release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Parity tests (JS must match the Python answers)
+        run: node --test
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install Capacitor
+        run: npm install --no-audit --no-fund
+
+      - name: Vendor @capacitor/core for the no-bundler web code
+        run: mkdir -p www/vendor && cp node_modules/@capacitor/core/dist/index.js www/vendor/capacitor-core.js
+
+      - name: Generate and patch the Android project
+        run: |
+          npx cap add android
+          node scripts/patch-android.mjs
+          npx cap sync android
+
+      - name: Build debug APK
+        working-directory: app/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Name the APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk fantasy-weekly.apk
+
+      - name: Publish as the latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: Fantasy Weekly test build ${{ github.run_number }}
+          make_latest: true
+          files: app/fantasy-weekly.apk
+          body: |
+            Test build from ${{ github.ref_name }} @ ${{ github.sha }}.
+            Debug-signed: to update, uninstall the previous version first, then install this one.

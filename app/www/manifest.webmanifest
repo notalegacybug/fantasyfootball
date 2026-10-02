@@ -1,0 +1,9 @@
+{
+  "name": "Fantasy Weekly",
+  "short_name": "Weekly",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f5f1",
+  "theme_color": "#185fa5",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

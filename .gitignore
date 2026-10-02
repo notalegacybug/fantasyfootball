@@ -20,3 +20,9 @@ __pycache__/
 venv/
 .env
 .DS_Store
+
+# --- web/mobile app: generated in CI, never committed ---
+app/node_modules/
+app/android/
+app/www/vendor/
+app/fantasy-weekly.apk

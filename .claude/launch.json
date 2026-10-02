@@ -6,6 +6,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["app.py", "serve"],
       "port": 8777
+    },
+    {
+      "name": "weekly-web",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["app/dev_server.py"],
+      "port": 8788
     }
   ]
 }

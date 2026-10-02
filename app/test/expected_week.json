@@ -1,0 +1,745 @@
+{
+ "before_week": {
+  "now_ms": 0,
+  "page": {
+   "week": 3,
+   "me": {
+    "id": 3,
+    "name": "Team 3",
+    "wins": 1,
+    "losses": 1,
+    "ties": 0
+   },
+   "opponent": {
+    "id": 4,
+    "name": "Team 4",
+    "wins": 2,
+    "losses": 0,
+    "ties": 0
+   },
+   "current_total": 147.2,
+   "optimal_total": 147.2,
+   "opponent_total": 154.9,
+   "problems": [
+    {
+     "player": {
+      "id": 4429160,
+      "name": "De'Von Achane",
+      "pos": "RB",
+      "team": "MIA",
+      "slot": "RB",
+      "proj": 19.8,
+      "ros": 0.0,
+      "injury": "INJURY_RESERVE",
+      "started_pct": 97.01,
+      "owned_change": -0.01,
+      "status": null,
+      "locked": false,
+      "outlook": "Achane has quickly staked his claim as one of the best running backs in the league. The 2023 third-round pick has scored either 11 or 12 touchdowns in each of his three seasons and put up a career-high 1,838 scrimmage yards in 2025. Achane's elite receiving production is nothing new (he has finished in the top five among backs in targets and receiving yards in each of the past two years), but he made another leap forward as a rusher last season, finishing fifth at the position in rushing yards. His 5.62 yards per carry is best among qualified backs since he entered the league. The 24-year-old is eyeing his third straight top-five fantasy campaign, and while that might be tricky in an overhauled Miami offense led by quarterback Malik Willis, Achane has minimal competition for touches and should easily be the offensive centerpiece. He's a solid RB1 option.",
+      "game": {
+       "opp": "KC",
+       "home": true,
+       "kickoff_ms": 1790528400000
+      }
+     },
+     "kind": "conflict",
+     "message": "marked IR but projected 19.8 -- check he's playing"
+    },
+    {
+     "player": {
+      "id": 3912547,
+      "name": "Sam Darnold",
+      "pos": "QB",
+      "team": "SEA",
+      "slot": "IR",
+      "proj": 19.4,
+      "ros": 262.9,
+      "injury": "ACTIVE",
+      "started_pct": 10.91,
+      "owned_change": 0.03,
+      "status": null,
+      "locked": false,
+      "outlook": "Darnold's first season with the Super Bowl champion Seahawks couldn't have gone much better from a real-life standpoint, but it simply didn't translate to much fantasy success. Despite finishing fifth in the NFL in passing yards for the second season in a row, Darnold finished 27th in fantasy points per game. He was very boom or bust, delivering seven top-10 weeks but also nine finishes outside the top 20. Turnovers (15 INTs were second most in the NFL) and a lack of rushing were the culprits. The 29-year-old will have a new playcaller in Brian Fleury, but otherwise it's roughly the status quo offensively. Darnold is no more than a fringe QB2 with a limited ceiling.",
+      "game": {
+       "opp": "WSH",
+       "home": false,
+       "kickoff_ms": 1790528400000
+      }
+     },
+     "kind": "ir_healthy",
+     "message": "healthy but in IR -- ESPN can block adds until he moves"
+    }
+   ],
+   "ir_moves": [
+    {
+     "player": {
+      "id": 3912547,
+      "name": "Sam Darnold",
+      "pos": "QB",
+      "team": "SEA",
+      "slot": "IR",
+      "proj": 19.4,
+      "ros": 262.9,
+      "injury": "ACTIVE",
+      "started_pct": 10.91,
+      "owned_change": 0.03,
+      "status": null,
+      "locked": false,
+      "outlook": "Darnold's first season with the Super Bowl champion Seahawks couldn't have gone much better from a real-life standpoint, but it simply didn't translate to much fantasy success. Despite finishing fifth in the NFL in passing yards for the second season in a row, Darnold finished 27th in fantasy points per game. He was very boom or bust, delivering seven top-10 weeks but also nine finishes outside the top 20. Turnovers (15 INTs were second most in the NFL) and a lack of rushing were the culprits. The 29-year-old will have a new playcaller in Brian Fleury, but otherwise it's roughly the status quo offensively. Darnold is no more than a fringe QB2 with a limited ceiling.",
+      "game": {
+       "opp": "WSH",
+       "home": false,
+       "kickoff_ms": 1790528400000
+      }
+     },
+     "from": "IR",
+     "to": "BENCH",
+     "reason": "healthy -- ESPN can block adds while he's in IR"
+    },
+    {
+     "player": {
+      "id": 4038815,
+      "name": "Rico Dowdle",
+      "pos": "RB",
+      "team": "PIT",
+      "slot": "BENCH",
+      "proj": 0.0,
+      "ros": 125.0,
+      "injury": "OUT",
+      "started_pct": 3.06,
+      "owned_change": -0.05,
+      "status": null,
+      "locked": false,
+      "outlook": "Dowdle signed with the Steelers after nearly identical campaigns with the Cowboys in 2024 (1,328 yards and five TDs on 274 touches) and Panthers in 2025 (1,373 yards and seven TDs on 275 touches). He was effective as a rusher (4.57 yards per carry) and fairly busy as a receiver (50 targets both years) en route to finishing just inside the top 25 in fantasy points per game both seasons. Now in Pittsburgh, the 28-year-old is expected to share work with Jaylen Warren. Earning lead-rusher duties could get Dowdle into the weekly flex discussion, but the ceiling will be low and he'll likely need an injury in order to find his way to consistent fantasy output. Consider him for your bench.",
+      "game": {
+       "opp": "CIN",
+       "home": true,
+       "kickoff_ms": 1790528400000
+      }
+     },
+     "from": "BENCH",
+     "to": "IR",
+     "reason": "out -- frees a roster spot"
+    }
+   ],
+   "deltas": [],
+   "close_calls": [
+    {
+     "slot": "FLEX",
+     "starter": {
+      "id": 4361432,
+      "name": "Romeo Doubs",
+      "pos": "WR",
+      "team": "NE",
+      "slot": "WR",
+      "proj": 11.6,
+      "ros": 110.4,
+      "injury": "ACTIVE",
+      "started_pct": 16.71,
+      "owned_change": -0.04,
+      "status": null,
+      "locked": false,
+      "outlook": "Doubs signed with the Patriots during free agency after spending his first four NFL seasons with the Packers. He was a serviceable player during his Green Bay tenure, but he never finished a season in the top 30 among receivers in targets, catches, yards or fantasy points. Consistently mediocre, Doubs has averaged either 10.2 or 10.3 fantasy PPG each of the last three seasons. In New England, Doubs is likely to settle in as Drake Maye's No. 2 target behind A.J. Brown, though his target ceiling figures to be capped with the likes of DeMario Douglas, Mack Hollins and Kyle Williams also in the mix at receiver. Doubs, 26, is a fine addition to your bench, but his upside is limited.",
+      "game": {
+       "opp": "JAX",
+       "home": false,
+       "kickoff_ms": 1790528400000
+      }
+     },
+     "alt": {
+      "id": 4241985,
+      "name": "J.K. Dobbins",
+      "pos": "RB",
+      "team": "DEN",
+      "slot": "BENCH",
+      "proj": 11.1,
+      "ros": 159.8,
+      "injury": "ACTIVE",
+      "started_pct": 11.92,
+      "owned_change": -0.03,
+      "status": null,
+      "locked": false,
+      "outlook": "Dobbins re-signed with Denver and will attempt to fend off sophomore RJ Harvey for the team's lead-back job. With both active during Weeks 1-10 last season (10 games), Dobbins handled 153 carries (60% team share) and 15 targets (4%), compared to 50 carries (20%) and 29 targets (9%) for Harvey. Dobbins ran well (5.05 yards per carry) when healthy, but he was limited to four touchdowns and was a nonfactor as a receiver (37 yards on 15 targets) en route to averaging 11.6 fantasy points (27th). Dobbins enters his age-27 campaign having yet to play a full season in his career (seven-plus missed games in four of the past five years) and without much value even when active (he has never produced a top-20 fantasy campaign). Dobbins is an underwhelming flex option with added value in non-PPR formats.",
+      "game": {
+       "opp": "LAR",
+       "home": true,
+       "kickoff_ms": 1790554800000
+      }
+     },
+     "margin": 0.5
+    },
+    {
+     "slot": "DST",
+     "starter": {
+      "id": -16008,
+      "name": "Lions D/ST",
+      "pos": "DST",
+      "team": "DET",
+      "slot": "DST",
+      "proj": 6.6,
+      "ros": 61.8,
+      "injury": null,
+      "started_pct": 39.41,
+      "owned_change": -0.02,
+      "status": null,
+      "locked": false,
+      "outlook": "Injuries have bred disappointing fantasy totals from the Lions' D/ST the past two seasons, as the team finished 12th and 17th despite what was a solid roster on paper. Fantasy managers should hope for better luck on that front, but at least the schedule will grant the Lions as good a chance to rebound as anything. They open with a home game against the Saints, have a trio of must-start matchups from Weeks 3-5 (NYJ, @CAR, @ARI) and one of the best second-half schedules.",
+      "game": {
+       "opp": "NYJ",
+       "home": true,
+       "kickoff_ms": 1790528400000
+      }
+     },
+     "alt": {
+      "id": -16014,
+      "name": "Rams D/ST",
+      "pos": "DST",
+      "team": "LAR",
+      "slot": "BENCH",
+      "proj": 5.4,
+      "ros": 97.6,
+      "injury": null,
+      "started_pct": 63.68,
+      "owned_change": 0.0,
+      "status": null,
+      "locked": false,
+      "outlook": "This already highly regarded defense only got stronger in June with the acquisition of two-time Defensive Player of the Year (2023, 2025) Myles Garrett. He wasn't their only addition, as CBs Trent McDuffie and Jaylen Watson were brought in from the Chiefs. Expect another productive season from this unit, though it does face one of the tougher early-season schedules, with the 49ers (Week 1), Broncos (3), Eagles (4) and Bills (5) among their first five opponents. The Rams' second-half schedule is one of the easiest, meaning they might be a better in-season trade target than a draft-day pickup.",
+      "game": {
+       "opp": "DEN",
+       "home": false,
+       "kickoff_ms": 1790554800000
+      }
+     },
+     "margin": 1.2
+    }
+   ],
+   "pickups": [
+    {
+     "add": {
+      "id": -16019,
+      "name": "Giants D/ST",
+      "pos": "DST",
+      "team": "NYG",
+      "slot": "BENCH",
+      "proj": 6.9,
+      "ros": 47.3,
+      "injury": null,
+      "started_pct": 13.24,
+      "owned_change": 0.01,
+      "status": "WAIVERS",
+      "locked": false,
+      "outlook": "The Giants' linebacker corps is their D/ST strength, and it's possible this could be a sneaky-good source of sacks. Nevertheless, it's almost impossible to make a case to draft them, being that they face the Cowboys and Rams to open 2026. Should the Giants impress in those games, however, they could be a prime pickup for a soft Weeks 3-6 portion of their schedule (TEN, ARI, @WSH, NO).",
+      "game": {
+       "opp": "TEN",
+       "home": true,
+       "kickoff_ms": 1790528400000
+      }
+     },
+     "drop": {
+      "id": 4832955,
+      "name": "Emmett Johnson",
+      "pos": "RB",
+      "team": "KC",
+      "slot": "BENCH",
+      "proj": 6.1,
+      "ros": 70.3,
+      "injury": "ACTIVE",
+      "started_pct": 1.55,
+      "owned_change": -0.01,
+      "status": null,
+      "locked": false,
+      "outlook": "Johnson was selected by the Chiefs in the fifth round of April's draft. His career 3.4 forced missed tackle rate is fourth best in this RB rookie class and his elusiveness helped him to 1,451 rushing yards (fourth in the nation and first in this class) last season. His lack of speed -- last among 10 RBs who ran the 40-yard dash (4.56) and speed score (93) at the combine -- and size limits him after initial contact (career 2.86 YAC), but he can help out in the passing game (92 collegiate receptions). Johnson and Brashard Smith are set to handle No. 2/3 duties behind Kenneth Walker III. Smith will be worth rostering only if Walker misses action.",
+      "game": {
+       "opp": "MIA",
+       "home": false,
+       "kickoff_ms": 1790528400000
+      }
+     },
+     "gain": 0.2,
+     "ros_delta": -23.0
+    }
+   ],
+   "starters": [
+    {
+     "slot": "QB",
+     "id": 3916387,
+     "name": "Lamar Jackson",
+     "pos": "QB",
+     "team": "BAL",
+     "proj": 24.7,
+     "ros": 330.6,
+     "injury": "ACTIVE",
+     "started_pct": 93.81,
+     "owned_change": 0.0,
+     "status": null,
+     "locked": false,
+     "outlook": "Jackson, 29, is eyeing a rebound after a disappointing, injury-plagued 2025. Jackson started the season strong (26-plus fantasy points in each of his first three games) but left Week 4 because of an injury and wasn't the same once he returned in Week 9 (13.5 fantasy points per game in his final nine outings). Jackson's overall rushing was down, but that was likely a product of him not being fully healthy, especially considering his scramble rate (8.4%) remained high. Jackson has a new coach (Jesse Minter) and playcaller (Declan Doyle), but his supporting cast is otherwise similar to a 2024 campaign in which he paced all quarterbacks in fantasy points. Assuming he's back to full health, Jackson is a strong bet for a rebound and should be valued as a high-end QB1.",
+     "game": {
+      "opp": "DAL",
+      "home": false,
+      "kickoff_ms": 1790540700000
+     }
+    },
+    {
+     "slot": "RB",
+     "id": 4429160,
+     "name": "De'Von Achane",
+     "pos": "RB",
+     "team": "MIA",
+     "proj": 19.8,
+     "ros": 0.0,
+     "injury": "INJURY_RESERVE",
+     "started_pct": 97.01,
+     "owned_change": -0.01,
+     "status": null,
+     "locked": false,
+     "outlook": "Achane has quickly staked his claim as one of the best running backs in the league. The 2023 third-round pick has scored either 11 or 12 touchdowns in each of his three seasons and put up a career-high 1,838 scrimmage yards in 2025. Achane's elite receiving production is nothing new (he has finished in the top five among backs in targets and receiving yards in each of the past two years), but he made another leap forward as a rusher last season, finishing fifth at the position in rushing yards. His 5.62 yards per carry is best among qualified backs since he entered the league. The 24-year-old is eyeing his third straight top-five fantasy campaign, and while that might be tricky in an overhauled Miami offense led by quarterback Malik Willis, Achane has minimal competition for touches and should easily be the offensive centerpiece. He's a solid RB1 option.",
+     "game": {
+      "opp": "KC",
+      "home": true,
+      "kickoff_ms": 1790528400000
+     }
+    },
+    {
+     "slot": "RB",
+     "id": 4241416,
+     "name": "Chuba Hubbard",
+     "pos": "RB",
+     "team": "CAR",
+     "proj": 14.8,
+     "ros": 210.5,
+     "injury": "ACTIVE",
+     "started_pct": 67.72,
+     "owned_change": -0.04,
+     "status": null,
+     "locked": false,
+     "outlook": "Hubbard is coming off a disappointing 2025 campaign in which he battled injury and lost lead-back duties to Rico Dowdle. The veteran was limited to 734 yards on 164 touches (he cleared 275 touches and 1,100 yards in 2023 and 2024), and he ranked 64th among 65 qualified backs in forced missed tackle rate and elusive rating, per PFF. Still in his prime at age 27, a bounce-back season is possible, especially with Dowdle gone and unproven Jonathon Brooks as his competition for touches. Hubbard should be considered a flex/bench option.",
+     "game": {
+      "opp": "CLE",
+      "home": false,
+      "kickoff_ms": 1790528400000
+     }
+    },
+    {
+     "slot": "WR",
+     "id": 16800,
+     "name": "Davante Adams",
+     "pos": "WR",
+     "team": "LAR",
+     "proj": 15.9,
+     "ros": 212.6,
+     "injury": "ACTIVE",
+     "started_pct": 90.26,
+     "owned_change": 0.0,
+     "status": null,
+     "locked": false,
+     "outlook": "Adams' first season in Los Angeles was a success, as the veteran led the wide receiver position in touchdowns for the third time in the past six seasons. His 27 end zone targets were nine more than any other player and he now sits second in that category (148) and in TDs from scrimmage (117) since entering the league in 2014. Adams' ninth-place finish in fantasy PPG marked his ninth top-10 in his past 10 seasons. Now 33 years old, he isn't targeted as much as in years past (24% target share in 2025 was his lowest since 2016), but he's the clear No. 2 behind Puka Nacua in the Rams' elite, Matthew Stafford-led offense. Adams' heavy usage near the goal line helps cement him as a fine fantasy WR2.",
+     "game": {
+      "opp": "DEN",
+      "home": false,
+      "kickoff_ms": 1790554800000
+     }
+    },
+    {
+     "slot": "FLEX",
+     "id": 4432620,
+     "name": "Parker Washington",
+     "pos": "WR",
+     "team": "JAX",
+     "proj": 15.2,
+     "ros": 219.1,
+     "injury": "ACTIVE",
+     "started_pct": 71.05,
+     "owned_change": -0.03,
+     "status": null,
+     "locked": false,
+     "outlook": "A strong finish to the 2025 season has made Washington one of the fascinating breakout candidates of 2026. Though he's primarily worked as a situational/depth player since being drafted in the sixth round in 2023, Washington has flashed when asked to play a bigger role. In 21 games since the start of 2024 in which he had a route participation above 50%, Washington handled a 20% target share and averaged 12.2 fantasy PPG. He surprisingly emerged as Jacksonville's top target late last season, which included a stretch of four straight games with at least nine targets and 19 fantasy points to end the season. The 24-year-old appears to have cemented a big role in Jacksonville, though Jakobi Meyers, Brian Thomas Jr. and perhaps Travis Hunter will battle him for snaps and targets. Washington should be targeted for your flex spot.",
+     "game": {
+      "opp": "NE",
+      "home": true,
+      "kickoff_ms": 1790528400000
+     }
+    },
+    {
+     "slot": "TE",
+     "id": 4361307,
+     "name": "Trey McBride",
+     "pos": "TE",
+     "team": "ARI",
+     "proj": 16.7,
+     "ros": 245.1,
+     "injury": "ACTIVE",
+     "started_pct": 99.21,
+     "owned_change": 0.0,
+     "status": null,
+     "locked": false,
+     "outlook": "McBride has emerged as one of the league's top pass catchers -- not just tight ends -- as he trails only Ja'Marr Chase in targets (317) and receptions (252) over the past two seasons and is sixth in receiving yards (2,385). McBride led the tight end position in every fantasy-relevant counting stat in 2025, and his league-high 15 top-12 fantasy weeks were six more than any other player at the position. He finished third in the NFL with 17 end zone targets. McBride really thrived when Jacoby Brissett (21.1 PPG) replaced Kyler Murray (12.5) under center, which only adds to his 2026 appeal. The 26-year-old should be on your radar at the first-/second-round turn.",
+     "game": {
+      "opp": "SF",
+      "home": false,
+      "kickoff_ms": 1790539500000
+     }
+    },
+    {
+     "slot": "FLEX",
+     "id": 4361050,
+     "name": "Isaiah Likely",
+     "pos": "TE",
+     "team": "NYG",
+     "proj": 12.4,
+     "ros": 158.4,
+     "injury": "ACTIVE",
+     "started_pct": 56.19,
+     "owned_change": -0.05,
+     "status": null,
+     "locked": false,
+     "outlook": "Likely signed with the Giants after four years of backing up Mark Andrews in Baltimore. Likely is reuniting with coach John Harbaugh and is finally expected to play a consistent offensive role. During his time in Baltimore, Likely was limited to 50% of the team's offensive snaps and never finished a season better than 20th among tight ends in snaps, routes, targets, catches, yards or fantasy PPG. His only extensive stretch with Andrews sidelined came back in 2023. During the seven-game span, Likely posted a 23-356-6 receiving line on a 16% target share and averaged a solid 13.5 fantasy PPG. The 26-year-old is obviously unproven, but his receiving skills in New York's ascending offense are enough to put him on the TE2 radar.",
+     "game": {
+      "opp": "TEN",
+      "home": true,
+      "kickoff_ms": 1790528400000
+     }
+    },
+    {
+     "slot": "WR",
+     "id": 4361432,
+     "name": "Romeo Doubs",
+     "pos": "WR",
+     "team": "NE",
+     "proj": 11.6,
+     "ros": 110.4,
+     "injury": "ACTIVE",
+     "started_pct": 16.71,
+     "owned_change": -0.04,
+     "status": null,
+     "locked": false,
+     "outlook": "Doubs signed with the Patriots during free agency after spending his first four NFL seasons with the Packers. He was a serviceable player during his Green Bay tenure, but he never finished a season in the top 30 among receivers in targets, catches, yards or fantasy points. Consistently mediocre, Doubs has averaged either 10.2 or 10.3 fantasy PPG each of the last three seasons. In New England, Doubs is likely to settle in as Drake Maye's No. 2 target behind A.J. Brown, though his target ceiling figures to be capped with the likes of DeMario Douglas, Mack Hollins and Kyle Williams also in the mix at receiver. Doubs, 26, is a fine addition to your bench, but his upside is limited.",
+     "game": {
+      "opp": "JAX",
+      "home": false,
+      "kickoff_ms": 1790528400000
+     }
+    },
+    {
+     "slot": "DST",
+     "id": -16008,
+     "name": "Lions D/ST",
+     "pos": "DST",
+     "team": "DET",
+     "proj": 6.6,
+     "ros": 61.8,
+     "injury": null,
+     "started_pct": 39.41,
+     "owned_change": -0.02,
+     "status": null,
+     "locked": false,
+     "outlook": "Injuries have bred disappointing fantasy totals from the Lions' D/ST the past two seasons, as the team finished 12th and 17th despite what was a solid roster on paper. Fantasy managers should hope for better luck on that front, but at least the schedule will grant the Lions as good a chance to rebound as anything. They open with a home game against the Saints, have a trio of must-start matchups from Weeks 3-5 (NYJ, @CAR, @ARI) and one of the best second-half schedules.",
+     "game": {
+      "opp": "NYJ",
+      "home": true,
+      "kickoff_ms": 1790528400000
+     }
+    },
+    {
+     "slot": "K",
+     "id": 2473037,
+     "name": "Jason Myers",
+     "pos": "K",
+     "team": "SEA",
+     "proj": 9.5,
+     "ros": 133.3,
+     "injury": "ACTIVE",
+     "started_pct": 91.11,
+     "owned_change": -0.01,
+     "status": null,
+     "locked": false,
+     "outlook": null,
+     "game": {
+      "opp": "WSH",
+      "home": false,
+      "kickoff_ms": 1790528400000
+     }
+    }
+   ]
+  }
+ },
+ "mid_sunday": {
+  "now_ms": 1790528400001,
+  "page": {
+   "week": 3,
+   "me": {
+    "id": 3,
+    "name": "Team 3",
+    "wins": 1,
+    "losses": 1,
+    "ties": 0
+   },
+   "opponent": {
+    "id": 4,
+    "name": "Team 4",
+    "wins": 2,
+    "losses": 0,
+    "ties": 0
+   },
+   "current_total": 147.2,
+   "optimal_total": 147.2,
+   "opponent_total": 154.9,
+   "problems": [
+    {
+     "player": {
+      "id": 4429160,
+      "name": "De'Von Achane",
+      "pos": "RB",
+      "team": "MIA",
+      "slot": "RB",
+      "proj": 19.8,
+      "ros": 0.0,
+      "injury": "INJURY_RESERVE",
+      "started_pct": 97.01,
+      "owned_change": -0.01,
+      "status": null,
+      "locked": true,
+      "outlook": "Achane has quickly staked his claim as one of the best running backs in the league. The 2023 third-round pick has scored either 11 or 12 touchdowns in each of his three seasons and put up a career-high 1,838 scrimmage yards in 2025. Achane's elite receiving production is nothing new (he has finished in the top five among backs in targets and receiving yards in each of the past two years), but he made another leap forward as a rusher last season, finishing fifth at the position in rushing yards. His 5.62 yards per carry is best among qualified backs since he entered the league. The 24-year-old is eyeing his third straight top-five fantasy campaign, and while that might be tricky in an overhauled Miami offense led by quarterback Malik Willis, Achane has minimal competition for touches and should easily be the offensive centerpiece. He's a solid RB1 option.",
+      "game": {
+       "opp": "KC",
+       "home": true,
+       "kickoff_ms": 1790528400000
+      }
+     },
+     "kind": "conflict",
+     "message": "marked IR but projected 19.8 -- check he's playing"
+    },
+    {
+     "player": {
+      "id": 3912547,
+      "name": "Sam Darnold",
+      "pos": "QB",
+      "team": "SEA",
+      "slot": "IR",
+      "proj": 19.4,
+      "ros": 262.9,
+      "injury": "ACTIVE",
+      "started_pct": 10.91,
+      "owned_change": 0.03,
+      "status": null,
+      "locked": true,
+      "outlook": "Darnold's first season with the Super Bowl champion Seahawks couldn't have gone much better from a real-life standpoint, but it simply didn't translate to much fantasy success. Despite finishing fifth in the NFL in passing yards for the second season in a row, Darnold finished 27th in fantasy points per game. He was very boom or bust, delivering seven top-10 weeks but also nine finishes outside the top 20. Turnovers (15 INTs were second most in the NFL) and a lack of rushing were the culprits. The 29-year-old will have a new playcaller in Brian Fleury, but otherwise it's roughly the status quo offensively. Darnold is no more than a fringe QB2 with a limited ceiling.",
+      "game": {
+       "opp": "WSH",
+       "home": false,
+       "kickoff_ms": 1790528400000
+      }
+     },
+     "kind": "ir_healthy",
+     "message": "healthy but in IR -- ESPN can block adds until he moves"
+    }
+   ],
+   "ir_moves": [],
+   "deltas": [],
+   "close_calls": [],
+   "pickups": [],
+   "starters": [
+    {
+     "slot": "QB",
+     "id": 3916387,
+     "name": "Lamar Jackson",
+     "pos": "QB",
+     "team": "BAL",
+     "proj": 24.7,
+     "ros": 330.6,
+     "injury": "ACTIVE",
+     "started_pct": 93.81,
+     "owned_change": 0.0,
+     "status": null,
+     "locked": false,
+     "outlook": "Jackson, 29, is eyeing a rebound after a disappointing, injury-plagued 2025. Jackson started the season strong (26-plus fantasy points in each of his first three games) but left Week 4 because of an injury and wasn't the same once he returned in Week 9 (13.5 fantasy points per game in his final nine outings). Jackson's overall rushing was down, but that was likely a product of him not being fully healthy, especially considering his scramble rate (8.4%) remained high. Jackson has a new coach (Jesse Minter) and playcaller (Declan Doyle), but his supporting cast is otherwise similar to a 2024 campaign in which he paced all quarterbacks in fantasy points. Assuming he's back to full health, Jackson is a strong bet for a rebound and should be valued as a high-end QB1.",
+     "game": {
+      "opp": "DAL",
+      "home": false,
+      "kickoff_ms": 1790540700000
+     }
+    },
+    {
+     "slot": "RB",
+     "id": 4429160,
+     "name": "De'Von Achane",
+     "pos": "RB",
+     "team": "MIA",
+     "proj": 19.8,
+     "ros": 0.0,
+     "injury": "INJURY_RESERVE",
+     "started_pct": 97.01,
+     "owned_change": -0.01,
+     "status": null,
+     "locked": true,
+     "outlook": "Achane has quickly staked his claim as one of the best running backs in the league. The 2023 third-round pick has scored either 11 or 12 touchdowns in each of his three seasons and put up a career-high 1,838 scrimmage yards in 2025. Achane's elite receiving production is nothing new (he has finished in the top five among backs in targets and receiving yards in each of the past two years), but he made another leap forward as a rusher last season, finishing fifth at the position in rushing yards. His 5.62 yards per carry is best among qualified backs since he entered the league. The 24-year-old is eyeing his third straight top-five fantasy campaign, and while that might be tricky in an overhauled Miami offense led by quarterback Malik Willis, Achane has minimal competition for touches and should easily be the offensive centerpiece. He's a solid RB1 option.",
+     "game": {
+      "opp": "KC",
+      "home": true,
+      "kickoff_ms": 1790528400000
+     }
+    },
+    {
+     "slot": "RB",
+     "id": 4241416,
+     "name": "Chuba Hubbard",
+     "pos": "RB",
+     "team": "CAR",
+     "proj": 14.8,
+     "ros": 210.5,
+     "injury": "ACTIVE",
+     "started_pct": 67.72,
+     "owned_change": -0.04,
+     "status": null,
+     "locked": true,
+     "outlook": "Hubbard is coming off a disappointing 2025 campaign in which he battled injury and lost lead-back duties to Rico Dowdle. The veteran was limited to 734 yards on 164 touches (he cleared 275 touches and 1,100 yards in 2023 and 2024), and he ranked 64th among 65 qualified backs in forced missed tackle rate and elusive rating, per PFF. Still in his prime at age 27, a bounce-back season is possible, especially with Dowdle gone and unproven Jonathon Brooks as his competition for touches. Hubbard should be considered a flex/bench option.",
+     "game": {
+      "opp": "CLE",
+      "home": false,
+      "kickoff_ms": 1790528400000
+     }
+    },
+    {
+     "slot": "WR",
+     "id": 16800,
+     "name": "Davante Adams",
+     "pos": "WR",
+     "team": "LAR",
+     "proj": 15.9,
+     "ros": 212.6,
+     "injury": "ACTIVE",
+     "started_pct": 90.26,
+     "owned_change": 0.0,
+     "status": null,
+     "locked": false,
+     "outlook": "Adams' first season in Los Angeles was a success, as the veteran led the wide receiver position in touchdowns for the third time in the past six seasons. His 27 end zone targets were nine more than any other player and he now sits second in that category (148) and in TDs from scrimmage (117) since entering the league in 2014. Adams' ninth-place finish in fantasy PPG marked his ninth top-10 in his past 10 seasons. Now 33 years old, he isn't targeted as much as in years past (24% target share in 2025 was his lowest since 2016), but he's the clear No. 2 behind Puka Nacua in the Rams' elite, Matthew Stafford-led offense. Adams' heavy usage near the goal line helps cement him as a fine fantasy WR2.",
+     "game": {
+      "opp": "DEN",
+      "home": false,
+      "kickoff_ms": 1790554800000
+     }
+    },
+    {
+     "slot": "WR",
+     "id": 4361432,
+     "name": "Romeo Doubs",
+     "pos": "WR",
+     "team": "NE",
+     "proj": 11.6,
+     "ros": 110.4,
+     "injury": "ACTIVE",
+     "started_pct": 16.71,
+     "owned_change": -0.04,
+     "status": null,
+     "locked": true,
+     "outlook": "Doubs signed with the Patriots during free agency after spending his first four NFL seasons with the Packers. He was a serviceable player during his Green Bay tenure, but he never finished a season in the top 30 among receivers in targets, catches, yards or fantasy points. Consistently mediocre, Doubs has averaged either 10.2 or 10.3 fantasy PPG each of the last three seasons. In New England, Doubs is likely to settle in as Drake Maye's No. 2 target behind A.J. Brown, though his target ceiling figures to be capped with the likes of DeMario Douglas, Mack Hollins and Kyle Williams also in the mix at receiver. Doubs, 26, is a fine addition to your bench, but his upside is limited.",
+     "game": {
+      "opp": "JAX",
+      "home": false,
+      "kickoff_ms": 1790528400000
+     }
+    },
+    {
+     "slot": "TE",
+     "id": 4361307,
+     "name": "Trey McBride",
+     "pos": "TE",
+     "team": "ARI",
+     "proj": 16.7,
+     "ros": 245.1,
+     "injury": "ACTIVE",
+     "started_pct": 99.21,
+     "owned_change": 0.0,
+     "status": null,
+     "locked": false,
+     "outlook": "McBride has emerged as one of the league's top pass catchers -- not just tight ends -- as he trails only Ja'Marr Chase in targets (317) and receptions (252) over the past two seasons and is sixth in receiving yards (2,385). McBride led the tight end position in every fantasy-relevant counting stat in 2025, and his league-high 15 top-12 fantasy weeks were six more than any other player at the position. He finished third in the NFL with 17 end zone targets. McBride really thrived when Jacoby Brissett (21.1 PPG) replaced Kyler Murray (12.5) under center, which only adds to his 2026 appeal. The 26-year-old should be on your radar at the first-/second-round turn.",
+     "game": {
+      "opp": "SF",
+      "home": false,
+      "kickoff_ms": 1790539500000
+     }
+    },
+    {
+     "slot": "FLEX",
+     "id": 4432620,
+     "name": "Parker Washington",
+     "pos": "WR",
+     "team": "JAX",
+     "proj": 15.2,
+     "ros": 219.1,
+     "injury": "ACTIVE",
+     "started_pct": 71.05,
+     "owned_change": -0.03,
+     "status": null,
+     "locked": true,
+     "outlook": "A strong finish to the 2025 season has made Washington one of the fascinating breakout candidates of 2026. Though he's primarily worked as a situational/depth player since being drafted in the sixth round in 2023, Washington has flashed when asked to play a bigger role. In 21 games since the start of 2024 in which he had a route participation above 50%, Washington handled a 20% target share and averaged 12.2 fantasy PPG. He surprisingly emerged as Jacksonville's top target late last season, which included a stretch of four straight games with at least nine targets and 19 fantasy points to end the season. The 24-year-old appears to have cemented a big role in Jacksonville, though Jakobi Meyers, Brian Thomas Jr. and perhaps Travis Hunter will battle him for snaps and targets. Washington should be targeted for your flex spot.",
+     "game": {
+      "opp": "NE",
+      "home": true,
+      "kickoff_ms": 1790528400000
+     }
+    },
+    {
+     "slot": "FLEX",
+     "id": 4361050,
+     "name": "Isaiah Likely",
+     "pos": "TE",
+     "team": "NYG",
+     "proj": 12.4,
+     "ros": 158.4,
+     "injury": "ACTIVE",
+     "started_pct": 56.19,
+     "owned_change": -0.05,
+     "status": null,
+     "locked": true,
+     "outlook": "Likely signed with the Giants after four years of backing up Mark Andrews in Baltimore. Likely is reuniting with coach John Harbaugh and is finally expected to play a consistent offensive role. During his time in Baltimore, Likely was limited to 50% of the team's offensive snaps and never finished a season better than 20th among tight ends in snaps, routes, targets, catches, yards or fantasy PPG. His only extensive stretch with Andrews sidelined came back in 2023. During the seven-game span, Likely posted a 23-356-6 receiving line on a 16% target share and averaged a solid 13.5 fantasy PPG. The 26-year-old is obviously unproven, but his receiving skills in New York's ascending offense are enough to put him on the TE2 radar.",
+     "game": {
+      "opp": "TEN",
+      "home": true,
+      "kickoff_ms": 1790528400000
+     }
+    },
+    {
+     "slot": "DST",
+     "id": -16008,
+     "name": "Lions D/ST",
+     "pos": "DST",
+     "team": "DET",
+     "proj": 6.6,
+     "ros": 61.8,
+     "injury": null,
+     "started_pct": 39.41,
+     "owned_change": -0.02,
+     "status": null,
+     "locked": true,
+     "outlook": "Injuries have bred disappointing fantasy totals from the Lions' D/ST the past two seasons, as the team finished 12th and 17th despite what was a solid roster on paper. Fantasy managers should hope for better luck on that front, but at least the schedule will grant the Lions as good a chance to rebound as anything. They open with a home game against the Saints, have a trio of must-start matchups from Weeks 3-5 (NYJ, @CAR, @ARI) and one of the best second-half schedules.",
+     "game": {
+      "opp": "NYJ",
+      "home": true,
+      "kickoff_ms": 1790528400000
+     }
+    },
+    {
+     "slot": "K",
+     "id": 2473037,
+     "name": "Jason Myers",
+     "pos": "K",
+     "team": "SEA",
+     "proj": 9.5,
+     "ros": 133.3,
+     "injury": "ACTIVE",
+     "started_pct": 91.11,
+     "owned_change": -0.01,
+     "status": null,
+     "locked": true,
+     "outlook": null,
+     "game": {
+      "opp": "WSH",
+      "home": false,
+      "kickoff_ms": 1790528400000
+     }
+    }
+   ]
+  }
+ }
+}

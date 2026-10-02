@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fantasy Weekly</title>
+<meta name="description" content="This week's fantasy football moves for your ESPN team.">
+<meta name="theme-color" content="#185fa5">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<main>
+  <nav>
+    <span class="on">Fantasy Weekly</span>
+    <span class="right" id="nav-right"></span>
+  </nav>
+  <div id="app"><p class="empty">Loading...</p></div>
+</main>
+<!-- cordova.js exists only inside the Android app (the in-app ESPN sign-in plugin). -->
+<script>if (window.Capacitor) document.write('<script src="/cordova.js"><\/script>');</script>
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>

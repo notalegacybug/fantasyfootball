@@ -1,0 +1,63 @@
+/* Same tokens as static/season.html, plus the setup screens. */
+:root {
+  --bg: #f6f5f1; --card: #ffffff; --line: #e4e2da; --text: #1f1f1d; --muted: #6b6a64;
+  --danger: #a32d2d; --danger-bg: #fcebeb; --warn: #854f0b; --warn-bg: #faeeda;
+  --ok: #3b6d11; --ok-bg: #eaf3de; --accent: #185fa5; --on-accent: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1b1a; --card: #242423; --line: #3a3a38; --text: #ecebe6; --muted: #a09f98;
+    --danger: #f09595; --danger-bg: #3d1a1a; --warn: #fac775; --warn-bg: #3a2a10;
+    --ok: #97c459; --ok-bg: #1f2e12; --accent: #85b7eb; --on-accent: #042c53;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+       font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 720px; margin: 0 auto;
+       padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); }
+nav { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border-bottom: 1px solid var(--line);
+      padding-bottom: 10px; margin-bottom: 16px; font-size: 14px; }
+nav .on { font-weight: 600; }
+nav .right { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+             color: var(--muted); font-size: 12px; }
+button, a.button { font: inherit; font-size: 13px; background: transparent; color: var(--text);
+         border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer;
+         text-decoration: none; display: inline-block; }
+button:hover, a.button:hover { background: var(--card); }
+button:disabled { opacity: .5; }
+.primary { background: var(--accent) !important; color: var(--on-accent) !important; border-color: var(--accent) !important; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.stat { background: var(--card); border-radius: 10px; padding: 12px 14px; }
+.stat .l { font-size: 12px; color: var(--muted); }
+.stat .v { font-size: 24px; font-weight: 600; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+        padding: 12px 16px; margin-bottom: 12px; }
+.card.danger { border-color: var(--danger); }
+.card h2 { font-size: 14px; margin: 0 0 6px; font-weight: 600; }
+.card.danger h2 { color: var(--danger); }
+.card.warn h2 { color: var(--warn); }
+.row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0;
+       border-top: 1px solid var(--line); font-size: 14px; flex-wrap: wrap; }
+.row:first-of-type { border-top: none; }
+.m { color: var(--muted); font-size: 12px; }
+.pill { font-size: 11px; padding: 1px 7px; border-radius: 6px; margin-left: 6px; white-space: nowrap; }
+.pill.danger { background: var(--danger-bg); color: var(--danger); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); }
+.pill.ok { background: var(--ok-bg); color: var(--ok); }
+.pill.lock { background: var(--line); color: var(--muted); }
+.empty { color: var(--muted); font-size: 14px; padding: 4px 0; }
+.good { color: var(--ok); }
+.err { background: var(--danger-bg); color: var(--danger); padding: 12px 16px; border-radius: 10px; margin-bottom: 12px; }
+
+.setup { padding: 16px; }
+.setup h2 { font-size: 16px; }
+.setup p { margin: 6px 0 12px; }
+.setup .button, .setup button { margin: 4px 8px 4px 0; }
+.setup code { font-size: 12px; }
+#league-form { display: flex; gap: 8px; flex-wrap: wrap; }
+#league-id { font: inherit; font-size: 16px; flex: 1 1 160px; min-width: 0; padding: 8px 10px;
+             border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); }
+.field-err { color: var(--danger); font-size: 13px; }
+button.team { display: flex; justify-content: space-between; width: 100%; margin: 6px 0 !important;
+              padding: 10px 12px; font-size: 14px; text-align: left; }

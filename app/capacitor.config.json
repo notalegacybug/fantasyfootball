@@ -1,0 +1,6 @@
+{
+  "appId": "com.notalegacybug.ffweekly",
+  "appName": "Fantasy Weekly",
+  "webDir": "www",
+  "server": { "androidScheme": "https" }
+}

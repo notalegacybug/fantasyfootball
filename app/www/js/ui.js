@@ -84,7 +84,7 @@ export function privateWebPage(leagueId, apkUrl) {
     <h2>This league is private, or the ID is wrong</h2>
     <p>League ${esc(leagueId)} can't be read from a website. Browsers don't let one site use your ESPN sign-in.</p>
     <p>The Android app can: it signs in to ESPN for you.</p>
-    <a class="button primary" href="ffweekly://league/${encodeURIComponent(leagueId)}">Open in the app</a>
+    <a class="button primary" href="rosteroptimizer://league/${encodeURIComponent(leagueId)}">Open in the app</a>
     <a class="button" href="${esc(apkUrl)}">Get the Android app</a>
     <button id="change-league">Use a different league</button>
   </section>`;

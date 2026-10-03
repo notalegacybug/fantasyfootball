@@ -1,6 +1,6 @@
 {
-  "appId": "com.notalegacybug.ffweekly",
-  "appName": "Fantasy Weekly",
+  "appId": "com.notalegacybug.rosteroptimizer",
+  "appName": "RosterOptimizer",
   "webDir": "www",
   "server": { "androidScheme": "https" }
 }

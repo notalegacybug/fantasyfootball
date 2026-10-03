@@ -1,6 +1,6 @@
 {
-  "name": "Fantasy Weekly",
-  "short_name": "Weekly",
+  "name": "RosterOptimizer",
+  "short_name": "RosterOptimizer",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f6f5f1",

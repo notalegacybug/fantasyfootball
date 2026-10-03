@@ -55,7 +55,7 @@ Changing the math means changing both and regenerating.
   says "private or wrong ID — use the Android app"; Android opens ESPN sign-in → pick team
   (Android with SWID: auto-selected) → remembered on the device.
 - **Links:** `/league/<leagueId>` only; team is never in the link (everyone in a league
-  shares the link). Android also registers `ffweekly://league/<id>` for the web app's
+  shares the link). Android also registers `rosteroptimizer://league/<id>` for the web app's
   "Open in app" button. Verified https App Links wait for a stable release signing key.
 - **Refresh:** on open and on button press; last good payload kept on the device and
   shown with its age if ESPN is unreachable.

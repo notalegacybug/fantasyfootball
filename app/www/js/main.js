@@ -12,7 +12,7 @@ import { espnLogin } from "./login.js";
 import * as store from "./store.js";
 import * as ui from "./ui.js";
 
-const APK_URL = "https://github.com/notalegacybug/fantasyfootball/releases/latest/download/fantasy-weekly.apk";
+const APK_URL = "https://github.com/notalegacybug/fantasyfootball/releases/latest/download/roster-optimizer.apk";
 const HOUR = 3600e3;
 
 const $ = s => document.querySelector(s);
@@ -182,8 +182,8 @@ function openLeague(id) {
   start();
 }
 
-// Android: ffweekly://league/<id> from the web app's "Open in the app" button.
-const fromAppUrl = url => (url ? leagueFromPath(url.replace("ffweekly://", "/")) : null);
+// Android: rosteroptimizer://league/<id> from the web app's "Open in the app" button.
+const fromAppUrl = url => (url ? leagueFromPath(url.replace("rosteroptimizer://", "/")) : null);
 if (isNative()) {
   capacitorCore().then(async ({ registerPlugin }) => {
     const App = registerPlugin("App");

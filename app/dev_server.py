@@ -28,5 +28,5 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 http.server.SimpleHTTPRequestHandler.extensions_map[".js"] = "text/javascript"
 if __name__ == "__main__":
-    print(f"Fantasy Weekly preview on http://localhost:{PORT}")
+    print(f"RosterOptimizer preview on http://localhost:{PORT}")
     http.server.ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()

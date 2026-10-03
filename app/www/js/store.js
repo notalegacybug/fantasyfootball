@@ -3,7 +3,7 @@
 // Storage can be unavailable (private windows, blocked site data), so every access is
 // guarded and the app still works -- it just forgets.
 
-const PREFIX = "ffw.";
+const PREFIX = "ro.";
 
 export function load(key, fallback = null) {
   try {

@@ -1,5 +1,5 @@
 {
-  "name": "fantasy-weekly",
+  "name": "roster-optimizer",
   "private": true,
   "version": "0.1.0",
   "description": "This week's fantasy football moves, on your phone. Web app + Android (Capacitor).",

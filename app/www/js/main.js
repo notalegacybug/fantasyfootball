@@ -7,6 +7,7 @@
 import * as espn from "./espn.js";
 import { buildState, findMyTeamId } from "./state.js";
 import { pageJson } from "./report.js";
+import { LOW_PROJECTION_FLAG, CLOSE_CALL_MARGIN, WAIVER_SHORTLIST } from "./season.js";
 import { isNative, makeGet, capacitorCore } from "./transport.js";
 import { espnLogin } from "./login.js";
 import * as store from "./store.js";
@@ -69,7 +70,9 @@ function header() {
     settings.leagueId ? `<button id="refresh">Refresh</button>` : "",
     settings.leagueId ? `<button id="switch">League</button>` : "",
     signedIn ? `<button id="signout">Sign out</button>` : "",
+    `<button id="how" aria-label="How it works" title="How it works">?</button>`,
   ].join("");
+  $("#how").addEventListener("click", howItWorks);
   $("#refresh")?.addEventListener("click", () => start({ force: true }));
   $("#switch")?.addEventListener("click", () => askLeague());
   $("#signout")?.addEventListener("click", () => {
@@ -83,6 +86,7 @@ function header() {
 }
 
 function askLeague(error) {
+  screenGen++;
   history.replaceState(null, "", "/");
   show(ui.setupPage(settings.leagueId, error));
   header();
@@ -94,6 +98,16 @@ function askLeague(error) {
     store.save("settings", settings);
     start();
   });
+}
+
+// Back goes through start(), which redraws from the saved page instantly when there is one.
+function howItWorks() {
+  screenGen++;
+  show(ui.howItWorksPage({ low: LOW_PROJECTION_FLAG, margin: CLOSE_CALL_MARGIN,
+                           shortlist: WAIVER_SHORTLIST, freeAgents: espn.FREE_AGENT_LIMIT }));
+  $("#age").textContent = "";
+  $("#back").addEventListener("click", () => start());
+  window.scrollTo(0, 0);
 }
 
 function needLogin() {
@@ -138,7 +152,12 @@ function showWeek(page, at, note) {
 // Flow
 // ---------------------------------------------------------------------------
 
+// Bumped whenever another screen takes over, so a slow ESPN load can't paint over it.
+let screenGen = 0;
+
 async function start({ force = false } = {}) {
+  const gen = ++screenGen;
+  const stale = () => gen !== screenGen;
   header();
   if (!settings.leagueId) return askLeague();
   history.replaceState(null, "", `/league/${settings.leagueId}`);
@@ -152,6 +171,7 @@ async function start({ force = false } = {}) {
     if (settings.teamId == null) {
       const { league } = await loadLeague(settings.leagueId);
       const teams = espn.parseLeague(league).teams;
+      if (stale()) return;
       const mine = findMyTeamId(teams, cookies?.swid);
       if (mine === null) return pickTeam(teams);
       settings.teamId = mine;
@@ -160,8 +180,9 @@ async function start({ force = false } = {}) {
     const page = await loadWeek(settings.leagueId, settings.teamId);
     const at = Date.now();
     store.save(`page.${settings.leagueId}.${settings.teamId}`, { page, at });
-    showWeek(page, at);
+    if (!stale()) showWeek(page, at);
   } catch (e) {
+    if (stale()) return;
     if (e.status === 401) return needLogin();
     if (cached) return showWeek(cached.page, cached.at, "offline, showing saved copy");
     show(ui.errorBox(`Couldn't read your league: ${e.message}`));

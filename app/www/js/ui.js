@@ -98,5 +98,32 @@ export function pickTeamPage(teams) {
   </section>`;
 }
 
-export const loadingPage = msg => `<p class="empty">${esc(msg || "Loading...")}</p>`;
+// Plain-language rules behind each card. Numbers come from the code's constants (c) so the
+// page can't drift from what the math actually does.
+export function howItWorksPage(c) {
+  const item = (title, text) => `<div class="row"><span><b>${title}</b><br><span class="m">${text}</span></span></div>`;
+  return `<section class="card setup how">
+    <h2>How it works</h2>
+    <p>Think of a coach with a whiteboard. The app takes <b>ESPN's own point predictions</b> for every player,
+       tries every legal lineup, and shows the one that scores the most. No secret formula: all numbers come from ESPN.</p>
+    <p class="m">It reads your league, your roster, injuries, game times, and the top ${c.freeAgents} free agents.</p>
+    ${item("Fix first", `Starters who are on bye, injured, or predicted under ${c.low} points. Also a healthy player
+      sitting in IR, because ESPN can block your pickups while he's there.`)}
+    ${item("IR moves", `Healthy players come out of IR first. Then injured (OUT or IR) players with almost no
+      predicted points go into empty IR spots, which frees a bench spot.`)}
+    ${item("Lineup changes", `Every legal lineup is tried (QB, RB, WR, TE, FLEX...). If yours is already the
+      highest-scoring one, it says so.`)}
+    ${item("Pickups", `Each free agent is tried on your team in place of your weakest bench player (lowest
+      rest-of-season prediction, so a good player on bye is never cut). The top ${c.shortlist} that raise
+      this week's score are shown.`)}
+    ${item("Close calls", `Start/sit choices less than ${c.margin} points apart. Basically a coin flip, so
+      go with your gut.`)}
+    ${item("Locked", `That player's game has started. ESPN won't let you move him, so the app doesn't suggest it.`)}
+    <p class="m">Private leagues: a website can't read them (browsers keep your ESPN sign-in to ESPN).
+       Make the league public, or use the Android app, which signs in for you.</p>
+    <button class="primary" id="back">Back</button>
+  </section>`;
+}
+
+export const loadingPage =msg => `<p class="empty">${esc(msg || "Loading...")}</p>`;
 export const errorBox = msg => `<div class="err">${esc(msg)}</div>`;

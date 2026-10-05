@@ -55,7 +55,9 @@ export function fetchLeague(get, leagueId, season) {
   return getJson(get, url(`${ESPN_BASE}/${season}/segments/0/leagues/${leagueId}`, views));
 }
 
-export function fetchFreeAgents(get, leagueId, season, week, limit = 150) {
+export const FREE_AGENT_LIMIT = 150;
+
+export function fetchFreeAgents(get, leagueId, season, week, limit = FREE_AGENT_LIMIT) {
   const flt = { players: {
     filterStatus: { value: ["FREEAGENT", "WAIVERS"] },
     filterSlotIds: { value: FREE_AGENT_SLOT_IDS },

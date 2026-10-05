@@ -1,0 +1,46 @@
+# iPhone build on GitHub's macOS machines (no Mac or Xcode on the dev PC).
+# Stage 1 (now): compile for the iOS Simulator, unsigned -- proves the app builds.
+# Stage 2 (after Apple Developer enrollment): sign and upload to TestFlight.
+name: ios
+
+on:
+  push:
+    branches: [main, in-season-m1]
+    paths: ["app/**", ".github/workflows/ios.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Parity tests (JS must match the Python answers)
+        run: node --test
+
+      - name: Install Capacitor
+        run: npm install --no-audit --no-fund
+
+      - name: Vendor @capacitor/core for the no-bundler web code
+        run: mkdir -p www/vendor && cp node_modules/@capacitor/core/dist/index.js www/vendor/capacitor-core.js
+
+      - name: Generate and patch the iOS project
+        run: |
+          npx cap add ios
+          node scripts/patch-ios.mjs
+          npx cap sync ios
+
+      - name: Build for the iOS Simulator (unsigned)
+        working-directory: app/ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -n 40
+          test "${PIPESTATUS[0]}" -eq 0

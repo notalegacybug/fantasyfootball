@@ -32,7 +32,7 @@ export function pageJson(st) {
                                           margin: round1(c.margin) })),
     pickups: r.pickups.map(w => ({ add: pj(w.add), drop: w.drop ? pj(w.drop) : null,
                                    gain: round1(w.gain), ros_delta: round1(w.ros_delta) })),
-    starters: r.starters.map(([s, p]) => ({ slot: s, ...pj(p) })),
+    starters: r.starters.map(([s, p]) => ({ ...pj(p), slot: s })),   // lineup slot wins over current
     constants: { close_call_margin: CLOSE_CALL_MARGIN },
   };
 }

@@ -184,7 +184,7 @@ async function start({ force = false } = {}) {
   } catch (e) {
     if (stale()) return;
     if (e.status === 401) return needLogin();
-    if (cached) return showWeek(cached.page, cached.at, "offline, showing saved copy");
+    if (cached) return showWeek(cached.page, cached.at, "couldn't reach ESPN, showing saved copy");
     show(ui.errorBox(`Couldn't read your league: ${e.message}`));
   }
 }

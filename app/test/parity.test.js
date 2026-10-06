@@ -56,3 +56,15 @@ test("picking a team by id gives the same page as signing in", () => {
 test("no SWID and no pick asks the user to pick a team", () => {
   assert.throws(() => buildState(raw, { nowMs: 0 }), /Pick your team/);
 });
+
+// Week 5: "Your best lineup" said "BENCH Lamar Jackson" -- the player's current slot
+// was overwriting the slot the lineup puts him in.
+test("best lineup labels each player with the slot he should play", () => {
+  for (const { now_ms } of Object.values(expected)) {
+    const page = pageJson(buildState(raw, { swid: MY_SWID, nowMs: now_ms }));
+    for (const p of page.starters) {
+      assert.ok(!["BENCH", "IR"].includes(p.slot), `${p.name} labelled ${p.slot} in the best lineup`);
+    }
+    for (const s of ["BENCH", "IR"]) assert.ok(!page.starters.some(p => p.slot === s));
+  }
+});

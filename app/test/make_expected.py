@@ -52,7 +52,7 @@ def page_json(now_ms: float) -> dict:
         "pickups": [{"add": pj(w["add"]), "drop": pj(w["drop"]) if w["drop"] else None,
                      "gain": round(w["gain"], 1), "ros_delta": round(w["ros_delta"], 1)}
                     for w in r["pickups"]],
-        "starters": [{"slot": s, **pj(p)} for s, p in r["starters"]],
+        "starters": [{**pj(p), "slot": s} for s, p in r["starters"]],   # lineup slot wins over current
     }
 
 

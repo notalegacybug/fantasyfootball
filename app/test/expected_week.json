@@ -306,11 +306,11 @@
    ],
    "starters": [
     {
-     "slot": "QB",
      "id": 3916387,
      "name": "Lamar Jackson",
      "pos": "QB",
      "team": "BAL",
+     "slot": "QB",
      "proj": 24.7,
      "ros": 330.6,
      "injury": "ACTIVE",
@@ -326,11 +326,11 @@
      }
     },
     {
-     "slot": "RB",
      "id": 4241416,
      "name": "Chuba Hubbard",
      "pos": "RB",
      "team": "CAR",
+     "slot": "RB",
      "proj": 14.8,
      "ros": 210.5,
      "injury": "ACTIVE",
@@ -346,11 +346,11 @@
      }
     },
     {
-     "slot": "BENCH",
      "id": 4241985,
      "name": "J.K. Dobbins",
      "pos": "RB",
      "team": "DEN",
+     "slot": "RB",
      "proj": 11.1,
      "ros": 159.8,
      "injury": "ACTIVE",
@@ -366,11 +366,11 @@
      }
     },
     {
-     "slot": "WR",
      "id": 16800,
      "name": "Davante Adams",
      "pos": "WR",
      "team": "LAR",
+     "slot": "WR",
      "proj": 15.9,
      "ros": 212.6,
      "injury": "ACTIVE",
@@ -386,11 +386,11 @@
      }
     },
     {
-     "slot": "FLEX",
      "id": 4432620,
      "name": "Parker Washington",
      "pos": "WR",
      "team": "JAX",
+     "slot": "WR",
      "proj": 15.2,
      "ros": 219.1,
      "injury": "ACTIVE",
@@ -406,11 +406,11 @@
      }
     },
     {
-     "slot": "TE",
      "id": 4361307,
      "name": "Trey McBride",
      "pos": "TE",
      "team": "ARI",
+     "slot": "TE",
      "proj": 16.7,
      "ros": 245.1,
      "injury": "ACTIVE",
@@ -426,11 +426,11 @@
      }
     },
     {
-     "slot": "FLEX",
      "id": 4361050,
      "name": "Isaiah Likely",
      "pos": "TE",
      "team": "NYG",
+     "slot": "FLEX",
      "proj": 12.4,
      "ros": 158.4,
      "injury": "ACTIVE",
@@ -446,11 +446,11 @@
      }
     },
     {
-     "slot": "WR",
      "id": 4361432,
      "name": "Romeo Doubs",
      "pos": "WR",
      "team": "NE",
+     "slot": "FLEX",
      "proj": 11.6,
      "ros": 110.4,
      "injury": "ACTIVE",
@@ -466,11 +466,11 @@
      }
     },
     {
-     "slot": "DST",
      "id": -16008,
      "name": "Lions D/ST",
      "pos": "DST",
      "team": "DET",
+     "slot": "DST",
      "proj": 6.6,
      "ros": 61.8,
      "injury": null,
@@ -486,11 +486,11 @@
      }
     },
     {
-     "slot": "K",
      "id": 2473037,
      "name": "Jason Myers",
      "pos": "K",
      "team": "SEA",
+     "slot": "K",
      "proj": 9.5,
      "ros": 133.3,
      "injury": "ACTIVE",
@@ -585,11 +585,11 @@
    "pickups": [],
    "starters": [
     {
-     "slot": "QB",
      "id": 3916387,
      "name": "Lamar Jackson",
      "pos": "QB",
      "team": "BAL",
+     "slot": "QB",
      "proj": 24.7,
      "ros": 330.6,
      "injury": "ACTIVE",
@@ -605,11 +605,11 @@
      }
     },
     {
-     "slot": "RB",
      "id": 4241416,
      "name": "Chuba Hubbard",
      "pos": "RB",
      "team": "CAR",
+     "slot": "RB",
      "proj": 14.8,
      "ros": 210.5,
      "injury": "ACTIVE",
@@ -625,11 +625,11 @@
      }
     },
     {
-     "slot": "RB",
      "id": 4429160,
      "name": "De'Von Achane",
      "pos": "RB",
      "team": "MIA",
+     "slot": "RB",
      "proj": 0.0,
      "ros": 0.0,
      "injury": "INJURY_RESERVE",
@@ -645,11 +645,11 @@
      }
     },
     {
-     "slot": "WR",
      "id": 16800,
      "name": "Davante Adams",
      "pos": "WR",
      "team": "LAR",
+     "slot": "WR",
      "proj": 15.9,
      "ros": 212.6,
      "injury": "ACTIVE",
@@ -665,11 +665,11 @@
      }
     },
     {
-     "slot": "WR",
      "id": 4361432,
      "name": "Romeo Doubs",
      "pos": "WR",
      "team": "NE",
+     "slot": "WR",
      "proj": 11.6,
      "ros": 110.4,
      "injury": "ACTIVE",
@@ -685,11 +685,11 @@
      }
     },
     {
-     "slot": "TE",
      "id": 4361307,
      "name": "Trey McBride",
      "pos": "TE",
      "team": "ARI",
+     "slot": "TE",
      "proj": 16.7,
      "ros": 245.1,
      "injury": "ACTIVE",
@@ -705,11 +705,11 @@
      }
     },
     {
-     "slot": "FLEX",
      "id": 4432620,
      "name": "Parker Washington",
      "pos": "WR",
      "team": "JAX",
+     "slot": "FLEX",
      "proj": 15.2,
      "ros": 219.1,
      "injury": "ACTIVE",
@@ -725,11 +725,11 @@
      }
     },
     {
-     "slot": "FLEX",
      "id": 4361050,
      "name": "Isaiah Likely",
      "pos": "TE",
      "team": "NYG",
+     "slot": "FLEX",
      "proj": 12.4,
      "ros": 158.4,
      "injury": "ACTIVE",
@@ -745,11 +745,11 @@
      }
     },
     {
-     "slot": "DST",
      "id": -16008,
      "name": "Lions D/ST",
      "pos": "DST",
      "team": "DET",
+     "slot": "DST",
      "proj": 6.6,
      "ros": 61.8,
      "injury": null,
@@ -765,11 +765,11 @@
      }
     },
     {
-     "slot": "K",
      "id": 2473037,
      "name": "Jason Myers",
      "pos": "K",
      "team": "SEA",
+     "slot": "K",
      "proj": 9.5,
      "ros": 133.3,
      "injury": "ACTIVE",

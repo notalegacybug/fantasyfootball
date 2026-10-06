@@ -164,8 +164,8 @@ def ir_moves(players, slots) -> list:
              for p in in_ir if not _ir_eligible(p) and not p.locked]
     free = slots.get("IR", 0) - (len(in_ir) - len(moves))
     cands = sorted((p for p in players if p.slot != "IR" and _ir_eligible(p)
-                    and p.week_pts < LOW_PROJECTION_FLAG and not p.locked),
-                   key=lambda p: (p.injury != "INJURY_RESERVE", p.week_pts))
+                    and p.espn_pts < LOW_PROJECTION_FLAG and not p.locked),
+                   key=lambda p: (p.injury != "INJURY_RESERVE", p.espn_pts))
     for p in cands[:max(free, 0)]:
         moves.append({"player": p, "from": p.slot, "to": "IR",
                       "reason": f"{p.injury.replace('_', ' ').lower()} -- frees a roster spot"})
@@ -186,9 +186,9 @@ def problems(players, lineup) -> list:
     for p in starters.values():
         if p.game is None:
             out.append({"player": p, "kind": "bye", "message": "on bye this week"})
-        elif p.injury == "INJURY_RESERVE" and p.week_pts >= LOW_PROJECTION_FLAG:
+        elif p.injury == "INJURY_RESERVE" and p.espn_pts >= LOW_PROJECTION_FLAG:
             out.append({"player": p, "kind": "conflict",
-                        "message": f"marked IR but projected {p.week_pts:.1f} -- check he's playing"})
+                        "message": f"marked IR but projected {p.espn_pts:.1f} -- check he's playing"})
         elif p.injury not in (None, "ACTIVE"):
             out.append({"player": p, "kind": "injury",
                         "message": p.injury.replace("_", " ").lower()})
@@ -219,7 +219,10 @@ def waiver_targets(players, free_agents, slots, n: int = WAIVER_SHORTLIST) -> li
     drop = None
     if len(active) >= roster_limit(slots):
         in_lu = {p.player_id for _, p in base_lu}
-        droppable = [p for p in active if p.player_id not in in_lu and not p.locked]
+        # Never cut a player whose ESPN status and projection disagree (e.g. IR but
+        # projected 19.8): problems() already asks the user to check him.
+        droppable = [p for p in active if p.player_id not in in_lu and not p.locked
+                     and not (p.week_pts == 0 and p.espn_pts >= LOW_PROJECTION_FLAG)]
         drop = min(droppable, key=lambda p: (p.proj_ros or 0.0, p.week_pts), default=None)
         if drop is None:
             return []

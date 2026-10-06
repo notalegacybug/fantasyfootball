@@ -12,6 +12,11 @@ from dataclasses import dataclass, field
 import sources
 
 
+# ESPN statuses that mean "not playing this week". QUESTIONABLE usually plays, so it keeps
+# its projection and is flagged in Fix first instead. Mirrored in app/www/js/state.js.
+WONT_PLAY_STATUSES = ("OUT", "DOUBTFUL", "INJURY_RESERVE", "SUSPENSION")
+
+
 @dataclass
 class Player:
     player_id: int
@@ -31,8 +36,15 @@ class Player:
     locked: bool = False       # his game has kicked off -- ESPN won't let him move
 
     @property
-    def week_pts(self) -> float:
+    def espn_pts(self) -> float:
+        """ESPN's projection as-is. Only the 'status and projection disagree' checks use it."""
         return self.proj_week or 0.0
+
+    @property
+    def week_pts(self) -> float:
+        """Points we expect: 0 when ESPN's status says he won't play, whatever it projects
+        (ESPN can leave a projection up after ruling a player out)."""
+        return 0.0 if self.injury in WONT_PLAY_STATUSES else self.espn_pts
 
     @property
     def is_starter(self) -> bool:

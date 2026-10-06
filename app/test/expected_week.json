@@ -17,8 +17,8 @@
     "losses": 0,
     "ties": 0
    },
-   "current_total": 147.2,
-   "optimal_total": 147.2,
+   "current_total": 127.4,
+   "optimal_total": 138.6,
    "opponent_total": 154.9,
    "problems": [
     {
@@ -28,7 +28,7 @@
       "pos": "RB",
       "team": "MIA",
       "slot": "RB",
-      "proj": 19.8,
+      "proj": 0.0,
       "ros": 0.0,
       "injury": "INJURY_RESERVE",
       "started_pct": 97.01,
@@ -122,7 +122,52 @@
      "reason": "out -- frees a roster spot"
     }
    ],
-   "deltas": [],
+   "deltas": [
+    {
+     "slot": "RB",
+     "out": {
+      "id": 4429160,
+      "name": "De'Von Achane",
+      "pos": "RB",
+      "team": "MIA",
+      "slot": "RB",
+      "proj": 0.0,
+      "ros": 0.0,
+      "injury": "INJURY_RESERVE",
+      "started_pct": 97.01,
+      "owned_change": -0.01,
+      "status": null,
+      "locked": false,
+      "outlook": "Achane has quickly staked his claim as one of the best running backs in the league. The 2023 third-round pick has scored either 11 or 12 touchdowns in each of his three seasons and put up a career-high 1,838 scrimmage yards in 2025. Achane's elite receiving production is nothing new (he has finished in the top five among backs in targets and receiving yards in each of the past two years), but he made another leap forward as a rusher last season, finishing fifth at the position in rushing yards. His 5.62 yards per carry is best among qualified backs since he entered the league. The 24-year-old is eyeing his third straight top-five fantasy campaign, and while that might be tricky in an overhauled Miami offense led by quarterback Malik Willis, Achane has minimal competition for touches and should easily be the offensive centerpiece. He's a solid RB1 option.",
+      "game": {
+       "opp": "KC",
+       "home": true,
+       "kickoff_ms": 1790528400000
+      }
+     },
+     "in": {
+      "id": 4241985,
+      "name": "J.K. Dobbins",
+      "pos": "RB",
+      "team": "DEN",
+      "slot": "BENCH",
+      "proj": 11.1,
+      "ros": 159.8,
+      "injury": "ACTIVE",
+      "started_pct": 11.92,
+      "owned_change": -0.03,
+      "status": null,
+      "locked": false,
+      "outlook": "Dobbins re-signed with Denver and will attempt to fend off sophomore RJ Harvey for the team's lead-back job. With both active during Weeks 1-10 last season (10 games), Dobbins handled 153 carries (60% team share) and 15 targets (4%), compared to 50 carries (20%) and 29 targets (9%) for Harvey. Dobbins ran well (5.05 yards per carry) when healthy, but he was limited to four touchdowns and was a nonfactor as a receiver (37 yards on 15 targets) en route to averaging 11.6 fantasy points (27th). Dobbins enters his age-27 campaign having yet to play a full season in his career (seven-plus missed games in four of the past five years) and without much value even when active (he has never produced a top-20 fantasy campaign). Dobbins is an underwhelming flex option with added value in non-PPR formats.",
+      "game": {
+       "opp": "LAR",
+       "home": true,
+       "kickoff_ms": 1790554800000
+      }
+     },
+     "gain": 11.1
+    }
+   ],
    "close_calls": [
     {
      "slot": "FLEX",
@@ -147,26 +192,26 @@
       }
      },
      "alt": {
-      "id": 4241985,
-      "name": "J.K. Dobbins",
-      "pos": "RB",
-      "team": "DEN",
+      "id": 4032473,
+      "name": "Rashid Shaheed",
+      "pos": "WR",
+      "team": "SEA",
       "slot": "BENCH",
       "proj": 11.1,
-      "ros": 159.8,
+      "ros": 114.9,
       "injury": "ACTIVE",
-      "started_pct": 11.92,
-      "owned_change": -0.03,
+      "started_pct": 8.99,
+      "owned_change": -0.04,
       "status": null,
       "locked": false,
-      "outlook": "Dobbins re-signed with Denver and will attempt to fend off sophomore RJ Harvey for the team's lead-back job. With both active during Weeks 1-10 last season (10 games), Dobbins handled 153 carries (60% team share) and 15 targets (4%), compared to 50 carries (20%) and 29 targets (9%) for Harvey. Dobbins ran well (5.05 yards per carry) when healthy, but he was limited to four touchdowns and was a nonfactor as a receiver (37 yards on 15 targets) en route to averaging 11.6 fantasy points (27th). Dobbins enters his age-27 campaign having yet to play a full season in his career (seven-plus missed games in four of the past five years) and without much value even when active (he has never produced a top-20 fantasy campaign). Dobbins is an underwhelming flex option with added value in non-PPR formats.",
+      "outlook": "Shaheed re-signed with Seattle after the team acquired him at last year's trade deadline. Known primarily for his elite return ability, Shaheed made an impact at times as a receiver with New Orleans, but wasn't used much on offense after the trade. In 12 games with the Seahawks (including the playoffs), Shaheed cleared three touches in only two games and averaged 5.9 fantasy PPG. The team's financial investment in Shaheed suggests his role will expand in 2026, but he still has to fend off Jaxon Smith-Njigba, Cooper Kupp and second-year WR Tory Horton for snaps and targets. Shaheed enters his age-28 season yet to deliver a top-35 fantasy campaign, and he's unlikely to get there this season while also focusing on special teams and working in Seattle's low-pass-volume offense.",
       "game": {
-       "opp": "LAR",
-       "home": true,
-       "kickoff_ms": 1790554800000
+       "opp": "WSH",
+       "home": false,
+       "kickoff_ms": 1790528400000
       }
      },
-     "margin": 0.5
+     "margin": 0.6
     },
     {
      "slot": "DST",
@@ -282,26 +327,6 @@
     },
     {
      "slot": "RB",
-     "id": 4429160,
-     "name": "De'Von Achane",
-     "pos": "RB",
-     "team": "MIA",
-     "proj": 19.8,
-     "ros": 0.0,
-     "injury": "INJURY_RESERVE",
-     "started_pct": 97.01,
-     "owned_change": -0.01,
-     "status": null,
-     "locked": false,
-     "outlook": "Achane has quickly staked his claim as one of the best running backs in the league. The 2023 third-round pick has scored either 11 or 12 touchdowns in each of his three seasons and put up a career-high 1,838 scrimmage yards in 2025. Achane's elite receiving production is nothing new (he has finished in the top five among backs in targets and receiving yards in each of the past two years), but he made another leap forward as a rusher last season, finishing fifth at the position in rushing yards. His 5.62 yards per carry is best among qualified backs since he entered the league. The 24-year-old is eyeing his third straight top-five fantasy campaign, and while that might be tricky in an overhauled Miami offense led by quarterback Malik Willis, Achane has minimal competition for touches and should easily be the offensive centerpiece. He's a solid RB1 option.",
-     "game": {
-      "opp": "KC",
-      "home": true,
-      "kickoff_ms": 1790528400000
-     }
-    },
-    {
-     "slot": "RB",
      "id": 4241416,
      "name": "Chuba Hubbard",
      "pos": "RB",
@@ -318,6 +343,26 @@
       "opp": "CLE",
       "home": false,
       "kickoff_ms": 1790528400000
+     }
+    },
+    {
+     "slot": "BENCH",
+     "id": 4241985,
+     "name": "J.K. Dobbins",
+     "pos": "RB",
+     "team": "DEN",
+     "proj": 11.1,
+     "ros": 159.8,
+     "injury": "ACTIVE",
+     "started_pct": 11.92,
+     "owned_change": -0.03,
+     "status": null,
+     "locked": false,
+     "outlook": "Dobbins re-signed with Denver and will attempt to fend off sophomore RJ Harvey for the team's lead-back job. With both active during Weeks 1-10 last season (10 games), Dobbins handled 153 carries (60% team share) and 15 targets (4%), compared to 50 carries (20%) and 29 targets (9%) for Harvey. Dobbins ran well (5.05 yards per carry) when healthy, but he was limited to four touchdowns and was a nonfactor as a receiver (37 yards on 15 targets) en route to averaging 11.6 fantasy points (27th). Dobbins enters his age-27 campaign having yet to play a full season in his career (seven-plus missed games in four of the past five years) and without much value even when active (he has never produced a top-20 fantasy campaign). Dobbins is an underwhelming flex option with added value in non-PPR formats.",
+     "game": {
+      "opp": "LAR",
+      "home": true,
+      "kickoff_ms": 1790554800000
      }
     },
     {
@@ -481,8 +526,8 @@
     "losses": 0,
     "ties": 0
    },
-   "current_total": 147.2,
-   "optimal_total": 147.2,
+   "current_total": 127.4,
+   "optimal_total": 127.4,
    "opponent_total": 154.9,
    "problems": [
     {
@@ -492,7 +537,7 @@
       "pos": "RB",
       "team": "MIA",
       "slot": "RB",
-      "proj": 19.8,
+      "proj": 0.0,
       "ros": 0.0,
       "injury": "INJURY_RESERVE",
       "started_pct": 97.01,
@@ -561,26 +606,6 @@
     },
     {
      "slot": "RB",
-     "id": 4429160,
-     "name": "De'Von Achane",
-     "pos": "RB",
-     "team": "MIA",
-     "proj": 19.8,
-     "ros": 0.0,
-     "injury": "INJURY_RESERVE",
-     "started_pct": 97.01,
-     "owned_change": -0.01,
-     "status": null,
-     "locked": true,
-     "outlook": "Achane has quickly staked his claim as one of the best running backs in the league. The 2023 third-round pick has scored either 11 or 12 touchdowns in each of his three seasons and put up a career-high 1,838 scrimmage yards in 2025. Achane's elite receiving production is nothing new (he has finished in the top five among backs in targets and receiving yards in each of the past two years), but he made another leap forward as a rusher last season, finishing fifth at the position in rushing yards. His 5.62 yards per carry is best among qualified backs since he entered the league. The 24-year-old is eyeing his third straight top-five fantasy campaign, and while that might be tricky in an overhauled Miami offense led by quarterback Malik Willis, Achane has minimal competition for touches and should easily be the offensive centerpiece. He's a solid RB1 option.",
-     "game": {
-      "opp": "KC",
-      "home": true,
-      "kickoff_ms": 1790528400000
-     }
-    },
-    {
-     "slot": "RB",
      "id": 4241416,
      "name": "Chuba Hubbard",
      "pos": "RB",
@@ -596,6 +621,26 @@
      "game": {
       "opp": "CLE",
       "home": false,
+      "kickoff_ms": 1790528400000
+     }
+    },
+    {
+     "slot": "RB",
+     "id": 4429160,
+     "name": "De'Von Achane",
+     "pos": "RB",
+     "team": "MIA",
+     "proj": 0.0,
+     "ros": 0.0,
+     "injury": "INJURY_RESERVE",
+     "started_pct": 97.01,
+     "owned_change": -0.01,
+     "status": null,
+     "locked": true,
+     "outlook": "Achane has quickly staked his claim as one of the best running backs in the league. The 2023 third-round pick has scored either 11 or 12 touchdowns in each of his three seasons and put up a career-high 1,838 scrimmage yards in 2025. Achane's elite receiving production is nothing new (he has finished in the top five among backs in targets and receiving yards in each of the past two years), but he made another leap forward as a rusher last season, finishing fifth at the position in rushing yards. His 5.62 yards per carry is best among qualified backs since he entered the league. The 24-year-old is eyeing his third straight top-five fantasy campaign, and while that might be tricky in an overhauled Miami offense led by quarterback Malik Willis, Achane has minimal competition for touches and should easily be the offensive centerpiece. He's a solid RB1 option.",
+     "game": {
+      "opp": "KC",
+      "home": true,
       "kickoff_ms": 1790528400000
      }
     },

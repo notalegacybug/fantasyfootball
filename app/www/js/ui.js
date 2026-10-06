@@ -54,8 +54,19 @@ export function weekPage(d) {
 
   h += card("Your best lineup", d.starters.map(p =>
     row(`<span class="m">${esc(p.slot)}</span> ${who(p)}`, `${game(p)} · ${pts(p.proj)}`)), "");
+
+  h += `<section class="card setup">
+    <h2>Weekly reminder</h2>
+    <p class="m">Adds a repeating Wednesday 9 AM event to your phone's calendar, after waivers clear.
+       Change the day or time in your calendar. It ends after the fantasy playoffs.</p>
+    <a class="button" href="${REMINDER_URL}">Add to my calendar</a>
+  </section>`;
   return h;
 }
+
+// Absolute on purpose: inside the Android app, a link to another site opens in the phone's
+// browser, which hands the .ics file to the calendar app. (A local file would just load in the app.)
+const REMINDER_URL = "https://fantasyfootball-af1.pages.dev/remind.ics";
 
 export function setupPage(leagueId, error) {
   return `<section class="card setup">

@@ -1,0 +1,20 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//RosterOptimizer//Weekly reminder//EN
+CALSCALE:GREGORIAN
+BEGIN:VEVENT
+UID:weekly-moves@rosteroptimizer
+DTSTAMP:20261006T000000Z
+DTSTART:20261007T090000
+DURATION:PT15M
+RRULE:FREQ=WEEKLY;BYDAY=WE;COUNT=13
+SUMMARY:Fantasy: check this week's moves
+DESCRIPTION:Open RosterOptimizer: https://fantasyfootball-af1.pages.dev
+URL:https://fantasyfootball-af1.pages.dev
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Check your fantasy moves
+TRIGGER:PT0M
+END:VALARM
+END:VEVENT
+END:VCALENDAR

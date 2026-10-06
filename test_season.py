@@ -163,8 +163,42 @@ def test_fixture_smoke():
     return ok
 
 
+def test_wont_play():
+    """Week 5 bug: the app said 'start Rico Dowdle' -- marked OUT, but ESPN still projected 8.0."""
+    ok = True
+    print("\n[7] Players who won't play count as 0")
+    roster = base_roster() + [P("Out RB", "RB", 30.0, injury="OUT"),
+                              P("Doubtful RB", "RB", 29.0, injury="DOUBTFUL"),
+                              P("Questionable RB", "RB", 28.0, injury="QUESTIONABLE")]
+    lu = season.best_lineup(roster, SLOTS)
+    ok &= check("OUT player not started", "Out RB" not in names(lu))
+    ok &= check("DOUBTFUL player not started", "Doubtful RB" not in names(lu))
+    ok &= check("QUESTIONABLE player still started", "Questionable RB" in names(lu))
+    ok &= check("OUT player not picked up", not any(
+        w["add"].name == "Out FA" for w in season.waiver_targets(
+            base_roster(), [P("Out FA", "RB", 40.0, injury="OUT")], SLOTS)))
+    starting_out = base_roster() + [P("Out starter", "WR", 15.0, "WR", injury="OUT")]
+    ok &= check("OUT starter counts 0 in current total",
+                abs(season.current_total(starting_out) - season.current_total(base_roster())) < 1e-9)
+    full = [p for p in base_roster() if (p.proj_ros or 0) > 0]   # the star must be the weakest
+    full += [P(f"Filler {i}", "WR", 1.0, ros=50.0) for i in range(season.roster_limit(SLOTS) - len(full) - 1)]
+    full.append(P("Disputed star", "RB", 19.8, "RB", ros=0.0, injury="INJURY_RESERVE"))
+    picks = season.waiver_targets(full, [P("Good FA", "QB", 40.0)], SLOTS)
+    ok &= check("never suggests dropping a player we ask the user to double-check",
+                picks and all(w["drop"].name != "Disputed star" for w in picks))
+    # ESPN's raw number still drives the 'disagree -> ask the user' rules, unchanged.
+    moves = season.ir_moves(roster, SLOTS)
+    ok &= check("OUT but projected 30 is NOT auto-moved to IR",
+                not any(m["player"].name == "Out RB" for m in moves))
+    ir_conflict = base_roster() + [P("IR but playing", "WR", 12.0, "WR", injury="INJURY_RESERVE")]
+    probs = season.problems(ir_conflict, season.best_lineup(ir_conflict, SLOTS))
+    ok &= check("'marked IR but projected 12.0' warning still shown", any(
+        p["kind"] == "conflict" and "12.0" in p["message"] for p in probs))
+    return ok
+
+
 def main():
-    ok = test_lineup() & test_ir_and_waivers() & test_fixture_smoke()
+    ok = test_lineup() & test_ir_and_waivers() & test_wont_play() & test_fixture_smoke()
     print("\n" + ("ALL CHECKS PASSED" if ok else "SOMETHING FAILED"))
     return 0 if ok else 1
 

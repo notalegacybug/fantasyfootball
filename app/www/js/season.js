@@ -2,7 +2,7 @@
 // so app/test/parity.test.js can demand identical answers on the recorded fixtures.
 // Pure functions over player objects: no network, no ESPN field names, no dates.
 
-import { weekPts, isStarter } from "./state.js";
+import { weekPts, espnPts, isStarter } from "./state.js";
 
 // Constants to argue with (spec section 6). Change them in season.py too.
 export const CLOSE_CALL_MARGIN = 2.5;
@@ -151,8 +151,8 @@ export function irMoves(players, slots) {
     reason: "healthy -- ESPN can block adds while he's in IR" }));
   const free = (slots.IR || 0) - (inIr.length - moves.length);
   const cands = sortBy(players.filter(p => p.slot !== "IR" && irEligible(p)
-                                       && weekPts(p) < LOW_PROJECTION_FLAG && !p.locked),
-                       p => [p.injury !== "INJURY_RESERVE" ? 1 : 0, weekPts(p)]);
+                                       && espnPts(p) < LOW_PROJECTION_FLAG && !p.locked),
+                       p => [p.injury !== "INJURY_RESERVE" ? 1 : 0, espnPts(p)]);
   for (const p of cands.slice(0, Math.max(free, 0))) {
     moves.push({ player: p, from: p.slot, to: "IR",
                  reason: `${injuryText(p.injury)} -- frees a roster spot` });
@@ -172,9 +172,9 @@ export function problems(players, lineup) {
   for (const p of starters.values()) {
     if (p.game === null) {
       out.push({ player: p, kind: "bye", message: "on bye this week" });
-    } else if (p.injury === "INJURY_RESERVE" && weekPts(p) >= LOW_PROJECTION_FLAG) {
+    } else if (p.injury === "INJURY_RESERVE" && espnPts(p) >= LOW_PROJECTION_FLAG) {
       out.push({ player: p, kind: "conflict",
-                 message: `marked IR but projected ${fmt1(weekPts(p))} -- check he's playing` });
+                 message: `marked IR but projected ${fmt1(espnPts(p))} -- check he's playing` });
     } else if (p.injury !== null && p.injury !== "ACTIVE") {
       out.push({ player: p, kind: "injury", message: injuryText(p.injury) });
     } else if (weekPts(p) < LOW_PROJECTION_FLAG) {
@@ -205,7 +205,10 @@ export function waiverTargets(players, freeAgents, slots, n = WAIVER_SHORTLIST) 
   let drop = null;
   if (active.length >= rosterLimit(slots)) {
     const inLu = new Set(baseLu.map(([, p]) => p.player_id));
-    const droppable = active.filter(p => !inLu.has(p.player_id) && !p.locked);
+    // Never cut a player whose ESPN status and projection disagree (e.g. IR but
+    // projected 19.8): problems() already asks the user to check him.
+    const droppable = active.filter(p => !inLu.has(p.player_id) && !p.locked
+                                         && !(weekPts(p) === 0 && espnPts(p) >= LOW_PROJECTION_FLAG));
     drop = droppable.reduce((best, p) => (best === null
       || cmpTuple([p.proj_ros || 0, weekPts(p)], [best.proj_ros || 0, weekPts(best)]) < 0 ? p : best), null);
     if (drop === null) return [];

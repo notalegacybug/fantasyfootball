@@ -3,7 +3,13 @@
 
 import { parseLeague, parseFreeAgents, parseProSchedule } from "./espn.js";
 
-export const weekPts = p => p.proj_week || 0;
+// ESPN statuses that mean "not playing this week" (league.py WONT_PLAY_STATUSES).
+// QUESTIONABLE usually plays, so it keeps its projection and is flagged in Fix first.
+export const WONT_PLAY_STATUSES = ["OUT", "DOUBTFUL", "INJURY_RESERVE", "SUSPENSION"];
+// ESPN's projection as-is: only the "status and projection disagree" checks use it.
+export const espnPts = p => p.proj_week || 0;
+// Points we expect: 0 when ESPN says he won't play, whatever it still projects.
+export const weekPts = p => (WONT_PLAY_STATUSES.includes(p.injury) ? 0 : espnPts(p));
 export const isStarter = p => p.slot !== "BENCH" && p.slot !== "IR";
 
 // ESPN stores owners as the same braced GUID as the SWID cookie. Case-insensitive.

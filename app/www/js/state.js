@@ -36,7 +36,7 @@ export function buildState(raw, { swid = "", teamId = null, nowMs = Date.now() }
       eligible: row.eligible, proj_week: row.proj_week, proj_ros: row.proj_ros,
       injury: row.injury, pct_started: row.pct_started, pct_change: row.pct_change,
       outlook: row.outlook, slot: row.slot ?? "BENCH", status: row.status ?? null,
-      game, locked,
+      game, locked, bye: pro[row.pro_team_id]?.bye ?? null,
     };
   };
 

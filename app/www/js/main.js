@@ -7,7 +7,8 @@
 import * as espn from "./espn.js";
 import { buildState, findMyTeamId } from "./state.js";
 import { pageJson } from "./report.js";
-import { LOW_PROJECTION_FLAG, CLOSE_CALL_MARGIN, WAIVER_SHORTLIST } from "./season.js";
+import { LOW_PROJECTION_FLAG, CLOSE_CALL_MARGIN, WAIVER_SHORTLIST, BYE_LOOKAHEAD,
+         STASH_MIN_ROS_GAIN } from "./season.js";
 import { isNative, makeGet, capacitorCore } from "./transport.js";
 import { espnLogin } from "./login.js";
 import * as store from "./store.js";
@@ -104,7 +105,8 @@ function askLeague(error) {
 function howItWorks() {
   screenGen++;
   show(ui.howItWorksPage({ low: LOW_PROJECTION_FLAG, margin: CLOSE_CALL_MARGIN,
-                           shortlist: WAIVER_SHORTLIST, freeAgents: espn.FREE_AGENT_LIMIT }));
+                           shortlist: WAIVER_SHORTLIST, freeAgents: espn.FREE_AGENT_LIMIT,
+                           lookahead: BYE_LOOKAHEAD, stashMin: STASH_MIN_ROS_GAIN }));
   $("#age").textContent = "";
   $("#back").addEventListener("click", () => start());
   window.scrollTo(0, 0);

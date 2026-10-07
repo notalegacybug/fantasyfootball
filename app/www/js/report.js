@@ -1,7 +1,7 @@
 // weeklyReport -> the JSON the This-week screen renders. Port of app.api_season_week's
 // serializer, field for field, so the parity test can compare against Python's output.
 
-import { weeklyReport, round1, CLOSE_CALL_MARGIN } from "./season.js";
+import { weeklyReport, round1, CLOSE_CALL_MARGIN, BYE_LOOKAHEAD } from "./season.js";
 import { weekPts } from "./state.js";
 
 function playerJson(st, p) {
@@ -10,7 +10,7 @@ function playerJson(st, p) {
     id: p.player_id, name: p.name, pos: p.pos, team: st.proAbbrev(p.pro_team_id),
     slot: p.slot, proj: round1(weekPts(p)), ros: round1(p.proj_ros || 0),
     injury: p.injury, started_pct: p.pct_started, owned_change: p.pct_change,
-    status: p.status, locked: p.locked, outlook: p.outlook,
+    status: p.status, locked: p.locked, outlook: p.outlook, bye: p.bye,
     game: g === null ? null : { opp: st.proAbbrev(g.opp), home: g.home, kickoff_ms: g.kickoff_ms },
   };
 }
@@ -32,7 +32,10 @@ export function pageJson(st) {
                                           margin: round1(c.margin) })),
     pickups: r.pickups.map(w => ({ add: pj(w.add), drop: w.drop ? pj(w.drop) : null,
                                    gain: round1(w.gain), ros_delta: round1(w.ros_delta) })),
+    stash: r.stash.map(w => ({ add: pj(w.add), drop: w.drop ? pj(w.drop) : null,
+                               ros_delta: round1(w.ros_delta) })),
+    bye_crunch: r.bye_crunch.map(c => ({ week: c.week, short: c.short, on_bye: c.on_bye.map(pj) })),
     starters: r.starters.map(([s, p]) => ({ ...pj(p), slot: s })),   // lineup slot wins over current
-    constants: { close_call_margin: CLOSE_CALL_MARGIN },
+    constants: { close_call_margin: CLOSE_CALL_MARGIN, bye_lookahead: BYE_LOOKAHEAD },
   };
 }

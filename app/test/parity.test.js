@@ -38,10 +38,18 @@ function same(a, b, path = "page") {
   for (const k of Object.keys(a)) same(a[k], b[k], `${path}.${k}`);
 }
 
+// Bye-week fields are JS-only (Python never had them); bye.test.js covers them.
+// Temporary: this whole file goes when the Python version is retired.
+const JS_ONLY = new Set(["bye", "stash", "bye_crunch"]);
+const withoutJsOnly = x => (Array.isArray(x) ? x.map(withoutJsOnly)
+  : x && typeof x === "object"
+    ? Object.fromEntries(Object.entries(x).filter(([k]) => !JS_ONLY.has(k)).map(([k, v]) => [k, withoutJsOnly(v)]))
+    : x);
+
 for (const [name, { now_ms, page }] of Object.entries(expected)) {
   test(`parity with Python: ${name}`, () => {
     const st = buildState(raw, { swid: MY_SWID, nowMs: now_ms });
-    const { constants, ...js } = pageJson(st);
+    const { constants, ...js } = withoutJsOnly(pageJson(st));
     assert.equal(constants.close_call_margin, 2.5);
     same(js, page);
   });

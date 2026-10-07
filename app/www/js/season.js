@@ -2,13 +2,18 @@
 // so app/test/parity.test.js can demand identical answers on the recorded fixtures.
 // Pure functions over player objects: no network, no ESPN field names, no dates.
 
-import { weekPts, espnPts, isStarter } from "./state.js";
+import { weekPts, espnPts, isStarter, WONT_PLAY_STATUSES } from "./state.js";
 
 // Constants to argue with (spec section 6). Change them in season.py too.
 export const CLOSE_CALL_MARGIN = 2.5;
 export const WAIVER_SHORTLIST = 5;
 export const LOW_PROJECTION_FLAG = 3.0;
 export const IR_ELIGIBLE_STATUSES = ["INJURY_RESERVE", "OUT"];
+// JS only from here (no season.py twin): bye weeks.
+export const BYE_LOOKAHEAD = 4;          // weeks ahead the bye warning checks
+export const STASH_MIN_ROS_GAIN = 10.0;  // rest-of-season points a stash must beat the drop by
+export const STASH_SHORTLIST = 3;
+const STREAMED = new Set(["K", "DST"]);
 
 const DEDICATED = ["QB", "RB", "WR", "TE", "DST", "K"];
 // Filled after the dedicated slots, narrowest first.
@@ -198,21 +203,25 @@ export const rosterLimit = slots => sum(Object.entries(slots).filter(([k]) => k 
 
 // Value of a free agent = how much he raises this week's optimal total. The drop is the
 // benched player with the lowest REST-OF-SEASON projection, never weekly.
+// The player a pickup would replace: null when there's an open roster spot, undefined
+// when the roster is full and nobody can be cut.
+function dropFor(players, slots, baseLu) {
+  const active = players.filter(p => p.slot !== "IR");
+  if (active.length < rosterLimit(slots)) return null;
+  const inLu = new Set(baseLu.map(([, p]) => p.player_id));
+  // Never cut a player whose ESPN status and projection disagree (e.g. IR but
+  // projected 19.8): problems() already asks the user to check him.
+  const droppable = active.filter(p => !inLu.has(p.player_id) && !p.locked
+                                       && !(weekPts(p) === 0 && espnPts(p) >= LOW_PROJECTION_FLAG));
+  return droppable.reduce((best, p) => (best === undefined
+    || cmpTuple([p.proj_ros || 0, weekPts(p)], [best.proj_ros || 0, weekPts(best)]) < 0 ? p : best), undefined);
+}
+
 export function waiverTargets(players, freeAgents, slots, n = WAIVER_SHORTLIST) {
   const baseLu = bestLineup(players, slots);
   const base = lineupTotal(baseLu);
-  const active = players.filter(p => p.slot !== "IR");
-  let drop = null;
-  if (active.length >= rosterLimit(slots)) {
-    const inLu = new Set(baseLu.map(([, p]) => p.player_id));
-    // Never cut a player whose ESPN status and projection disagree (e.g. IR but
-    // projected 19.8): problems() already asks the user to check him.
-    const droppable = active.filter(p => !inLu.has(p.player_id) && !p.locked
-                                         && !(weekPts(p) === 0 && espnPts(p) >= LOW_PROJECTION_FLAG));
-    drop = droppable.reduce((best, p) => (best === null
-      || cmpTuple([p.proj_ros || 0, weekPts(p)], [best.proj_ros || 0, weekPts(best)]) < 0 ? p : best), null);
-    if (drop === null) return [];
-  }
+  const drop = dropFor(players, slots, baseLu);
+  if (drop === undefined) return [];
   const out = [];
   for (const fa of freeAgents) {
     const roster = [...players.filter(p => p !== drop), { ...fa, slot: "BENCH" }];
@@ -223,6 +232,57 @@ export function waiverTargets(players, freeAgents, slots, n = WAIVER_SHORTLIST) 
     }
   }
   return sortBy(out, x => [-x.gain]).slice(0, n);
+}
+
+// Free agents on bye THIS week score 0 in waiverTargets, so a good one never shows there.
+// Judge them on rest-of-season instead, against the same drop. Kept as a separate list
+// because "+6 this week" and "+40 over the season" aren't the same scale.
+export function stashTargets(players, freeAgents, slots, n = STASH_SHORTLIST) {
+  const drop = dropFor(players, slots, bestLineup(players, slots));
+  if (drop === undefined) return [];
+  const out = [];
+  for (const fa of freeAgents) {
+    // K and DST are streamed week to week; holding one through his bye wastes a bench spot.
+    if (fa.game !== null || WONT_PLAY_STATUSES.includes(fa.injury) || STREAMED.has(fa.pos)) continue;
+    const ros_delta = (fa.proj_ros || 0) - (drop ? (drop.proj_ros || 0) : 0);
+    if (ros_delta >= STASH_MIN_ROS_GAIN) out.push({ add: fa, drop, ros_delta });
+  }
+  return sortBy(out, x => [-x.ros_delta]).slice(0, n);
+}
+
+// --------------------------------------------------------------------------
+// Bye weeks ahead
+// --------------------------------------------------------------------------
+
+// For each of the next BYE_LOOKAHEAD weeks: can the players who AREN'T on bye still fill
+// every starting slot? Counted by position, dedicated slots first, then FLEX/OP from the
+// leftovers -- the same order bestLineup fills them. This week is problems()' job.
+export function byeCrunch(players, slots, week, horizon = BYE_LOOKAHEAD) {
+  const roster = players.filter(p => p.slot !== "IR");
+  const out = [];
+  for (let w = week + 1; w <= week + horizon; w++) {
+    const left = {};
+    for (const p of roster) if (p.bye !== w) left[p.pos] = (left[p.pos] || 0) + 1;
+    const short = [];
+    for (const pos of DEDICATED) {
+      const need = slots[pos] || 0, have = left[pos] || 0;
+      if (have < need) short.push({ slot: pos, have, need });
+      left[pos] = Math.max(have - need, 0);
+    }
+    for (const [flex, accepts] of FLEX_ACCEPTS) {
+      const need = slots[flex] || 0;
+      if (!need) continue;
+      let have = 0;
+      for (const pos of accepts) {
+        const take = Math.min(left[pos] || 0, need - have);
+        have += take;
+        left[pos] = (left[pos] || 0) - take;
+      }
+      if (have < need) short.push({ slot: flex, have, need });
+    }
+    if (short.length) out.push({ week: w, short, on_bye: roster.filter(p => p.bye === w) });
+  }
+  return out;
 }
 
 // --------------------------------------------------------------------------
@@ -246,6 +306,8 @@ export function weeklyReport(state) {
     deltas: lineupDeltas(afterIr, lu),
     close_calls: closeCalls(afterIr, lu),
     pickups: waiverTargets(afterIr, state.freeAgents, state.slots),
+    stash: stashTargets(afterIr, state.freeAgents, state.slots),
+    bye_crunch: byeCrunch(afterIr, state.slots, state.week),
     starters: lu,
   };
 }

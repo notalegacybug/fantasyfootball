@@ -15,7 +15,8 @@ function badges(p) {
   if (p.locked) b += `<span class="pill lock">locked</span>`;
   return b;
 }
-const who = p => `${esc(p.name)} <span class="m">${esc(p.pos)} · ${esc(p.team)}</span>${badges(p)}`;
+const who = p => `${esc(p.name)} <span class="m">${esc(p.pos)} · ${esc(p.team)}${p.bye ? ` · bye ${p.bye}` : ""}</span>${badges(p)}`;
+const slotsText = short => short.map(s => `${s.have} ${esc(s.slot)} for ${s.need} spot${s.need > 1 ? "s" : ""}`).join(", ");
 function card(title, rows, empty, cls = "") {
   return `<section class="card ${cls}"><h2>${title}</h2>${rows.length ? rows.join("") : `<div class="empty">${empty}</div>`}</section>`;
 }
@@ -46,6 +47,20 @@ export function weekPage(d) {
          <span class="m">${game(w.add)} · proj ${pts(w.add.proj)} · owned ${w.add.owned_change > 0 ? "+" : ""}${pts(w.add.owned_change)}% this week</span>`,
         `+${pts(w.gain)} this week · ${w.drop ? "drop " + esc(w.drop.name) : "no drop needed"}<br>rest of season ${w.ros_delta >= 0 ? "+" : ""}${pts(w.ros_delta)}`)),
     "No free agent would crack your lineup this week.");
+
+  h += card("Bye weeks ahead", d.bye_crunch.map(c =>
+    row(`<b>Week ${c.week}</b>: only ${slotsText(c.short)}<br>
+         <span class="m">On bye: ${c.on_bye.map(p => `${esc(p.name)} (${esc(p.pos)})`).join(", ")}</span>`,
+        `<span class="pill warn">plan a pickup</span>`)),
+    `<span class="good">Your lineup is covered for the next ${d.constants.bye_lookahead} weeks.</span>`,
+    d.bye_crunch.length ? "warn" : "");
+
+  if (d.stash.length) {
+    h += card("Stash (on bye now, worth holding)", d.stash.map(w =>
+      row(`${who(w.add)} <span class="pill ${w.add.status === "WAIVERS" ? "warn" : "ok"}">${w.add.status === "WAIVERS" ? "waivers" : "free agent"}</span><br>
+           <span class="m">on bye this week · scores 0 now</span>`,
+          `rest of season <b class="good">+${pts(w.ros_delta)}</b><br>${w.drop ? "drop " + esc(w.drop.name) : "no drop needed"}`)), "");
+  }
 
   h += card(`Close calls (under ${d.constants.close_call_margin} pts)`, d.close_calls.map(c =>
     row(`${esc(c.slot)} · ${esc(c.starter.name)} ${pts(c.starter.proj)} over ${esc(c.alt.name)} ${pts(c.alt.proj)}`,
@@ -127,6 +142,10 @@ export function howItWorksPage(c) {
     ${item("Pickups", `Each free agent is tried on your team in place of your weakest bench player (lowest
       rest-of-season prediction, so a good player on bye is never cut). The top ${c.shortlist} that raise
       this week's score are shown.`)}
+    ${item("Bye weeks ahead", `Looks at the next ${c.lookahead} weeks. If the players who aren't on bye can't
+      fill every starting spot, it names the week and who's off, so you can pick someone up early.`)}
+    ${item("Stash", `A free agent on bye this week scores 0, so he never shows in Pickups. If his
+      rest-of-season prediction beats your weakest bench player's by ${c.stashMin} or more, he's listed here.`)}
     ${item("Close calls", `Start/sit choices less than ${c.margin} points apart. Basically a coin flip, so
       go with your gut.`)}
     ${item("Locked", `That player's game has started. ESPN won't let you move him, so the app doesn't suggest it.`)}

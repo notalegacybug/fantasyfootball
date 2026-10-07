@@ -3,8 +3,7 @@
 // Browser: plain fetch(). Public leagues only -- browsers never attach espn.com's
 //   cookies to a request from our site (measured: 401 from example.com while signed in).
 // Android: Capacitor's native HTTP, which isn't subject to browser cookie rules, with
-//   the cookies captured at sign-in (login.js) sent as a Cookie header -- exactly what
-//   sources._espn_get does in Python.
+//   the cookies captured at sign-in (login.js) sent as a Cookie header.
 
 // The Android shell injects window.Capacitor; a browser never has it.
 export const isNative = () => Boolean(globalThis.Capacitor?.isNativePlatform?.());

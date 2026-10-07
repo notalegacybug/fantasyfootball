@@ -7,9 +7,6 @@
     "espn_s2": "",
     "swid": ""
   },
-  "discord": {
-    "webhook_url": ""
-  },
   "format_override": {
     "teams": 10,
     "slots": {"QB":1,"RB":2,"WR":2,"TE":1,"FLEX":1,"DST":1,"K":1,"OP":0},

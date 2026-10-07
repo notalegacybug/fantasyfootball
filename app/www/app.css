@@ -1,4 +1,4 @@
-/* Same tokens as static/season.html, plus the setup screens. */
+/* Design tokens, then the This-week cards and the setup screens. */
 :root {
   --bg: #f6f5f1; --card: #ffffff; --line: #e4e2da; --text: #1f1f1d; --muted: #6b6a64;
   --danger: #a32d2d; --danger-bg: #fcebeb; --warn: #854f0b; --warn-bg: #faeeda;

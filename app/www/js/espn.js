@@ -1,7 +1,6 @@
 // ESPN adapter: the only file that knows ESPN's URLs, ids and field names.
-// Port of the fetchers + parse_* functions in sources.py. Everything it returns is the
-// platform-neutral shape (plain slot/position names) that state.js and season.js read,
-// so a Yahoo adapter only has to produce the same shape.
+// Everything it returns is the platform-neutral shape (plain slot/position names) that
+// state.js and season.js read, so a Yahoo adapter only has to produce the same shape.
 
 export const ESPN_GAME = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl";
 const ESPN_BASE = `${ESPN_GAME}/seasons`;

@@ -1,15 +1,14 @@
-// In-season decision math. Port of season.py -- same constants, same rules, same order,
-// so app/test/parity.test.js can demand identical answers on the recorded fixtures.
+// In-season decision math. app/test/week.test.js pins its answers on the recorded fixtures.
 // Pure functions over player objects: no network, no ESPN field names, no dates.
 
 import { weekPts, espnPts, isStarter, WONT_PLAY_STATUSES } from "./state.js";
 
-// Constants to argue with (spec section 6). Change them in season.py too.
+// Constants to argue with (spec section 6).
 export const CLOSE_CALL_MARGIN = 2.5;
 export const WAIVER_SHORTLIST = 5;
 export const LOW_PROJECTION_FLAG = 3.0;
 export const IR_ELIGIBLE_STATUSES = ["INJURY_RESERVE", "OUT"];
-// JS only from here (no season.py twin): bye weeks.
+// Bye weeks.
 export const BYE_LOOKAHEAD = 4;          // weeks ahead the bye warning checks
 export const STASH_MIN_ROS_GAIN = 10.0;  // rest-of-season points a stash must beat the drop by
 export const STASH_SHORTLIST = 3;
@@ -22,8 +21,8 @@ const KNOWN_SLOTS = new Set([...DEDICATED, "FLEX", "OP", "BENCH", "IR"]);
 const SLOT_ORDER = ["QB", "RB", "WR", "TE", "FLEX", "OP", "DST", "K"];
 const MAX_MULTI_POSITION = 6;
 
-// Python's round(x, 1) / f"{x:.1f}": ties go to the even digit. JS's toFixed rounds ties
-// up, which would make "projected 2.2" vs "2.3" differ from the Python page on x.x5.
+// Round half to even (the original Python version's round()). Kept so recorded answers
+// don't shift: JS's toFixed rounds ties up, turning "projected 2.2" into "2.3" on x.x5.
 export function round1(x) {
   const y = x * 10, f = Math.floor(y);
   const n = y - f === 0.5 ? (f % 2 === 0 ? f : f + 1) : Math.round(y);
@@ -32,10 +31,10 @@ export function round1(x) {
 export const fmt1 = x => round1(x).toFixed(1);
 
 const sum = xs => xs.reduce((a, b) => a + b, 0);
-// Python's min()/max() keep the FIRST of equal elements; so do these.
+// On ties these keep the FIRST of equal elements (stable answers).
 const minBy = (xs, key) => xs.reduce((best, x) => (best === undefined || key(x) < key(best) ? x : best), undefined);
 const maxBy = (xs, key) => xs.reduce((best, x) => (best === undefined || key(x) > key(best) ? x : best), undefined);
-// Lexicographic compare of key tuples, like Python sorting by a tuple key.
+// Lexicographic compare of key tuples.
 function cmpTuple(a, b) {
   for (let i = 0; i < a.length; i++) {
     if (a[i] < b[i]) return -1;

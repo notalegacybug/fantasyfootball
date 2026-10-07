@@ -1,5 +1,6 @@
-// The JS port must give the Python app's answers on the recorded ESPN fixtures.
-// Answer key: app/test/expected_week.json, written by `python app/test/make_expected.py`.
+// The This-week page must give the recorded answers on the recorded ESPN fixtures.
+// Answer key: app/test/expected_week.json, written by `node test/make_expected.mjs`.
+// A failure means a rule's answer changed: if you meant it, regenerate and read the diff.
 //
 //     cd app && node --test
 
@@ -18,19 +19,19 @@ const raw = {
 const expected = JSON.parse(readFileSync(new URL("./expected_week.json", import.meta.url)));
 const MY_SWID = "{00000000-0000-0000-0000-000000000001}";
 
-// Deep equality, numbers within 0.05 (Python round vs float noise). Reports the path.
+// Deep equality, numbers within 0.05 (float noise). Reports the path.
 function same(a, b, path = "page") {
   if (typeof a === "number" && typeof b === "number") {
-    assert.ok(Math.abs(a - b) < 0.05, `${path}: JS ${a} vs Python ${b}`);
+    assert.ok(Math.abs(a - b) < 0.05, `${path}: got ${a}, answer key ${b}`);
     return;
   }
   if (a === null || b === null || typeof a !== "object" || typeof b !== "object") {
-    assert.equal(a, b, `${path}: JS ${JSON.stringify(a)} vs Python ${JSON.stringify(b)}`);
+    assert.equal(a, b, `${path}: got ${JSON.stringify(a)}, answer key ${JSON.stringify(b)}`);
     return;
   }
   if (Array.isArray(a) || Array.isArray(b)) {
     assert.ok(Array.isArray(a) && Array.isArray(b), `${path}: array vs object`);
-    assert.equal(a.length, b.length, `${path}: length JS ${a.length} vs Python ${b.length}`);
+    assert.equal(a.length, b.length, `${path}: length ${a.length}, answer key ${b.length}`);
     a.forEach((x, i) => same(x, b[i], `${path}[${i}]`));
     return;
   }
@@ -38,18 +39,10 @@ function same(a, b, path = "page") {
   for (const k of Object.keys(a)) same(a[k], b[k], `${path}.${k}`);
 }
 
-// Bye-week fields are JS-only (Python never had them); bye.test.js covers them.
-// Temporary: this whole file goes when the Python version is retired.
-const JS_ONLY = new Set(["bye", "stash", "bye_crunch"]);
-const withoutJsOnly = x => (Array.isArray(x) ? x.map(withoutJsOnly)
-  : x && typeof x === "object"
-    ? Object.fromEntries(Object.entries(x).filter(([k]) => !JS_ONLY.has(k)).map(([k, v]) => [k, withoutJsOnly(v)]))
-    : x);
-
 for (const [name, { now_ms, page }] of Object.entries(expected)) {
-  test(`parity with Python: ${name}`, () => {
+  test(`same answers as the answer key: ${name}`, () => {
     const st = buildState(raw, { swid: MY_SWID, nowMs: now_ms });
-    const { constants, ...js } = withoutJsOnly(pageJson(st));
+    const { constants, ...js } = pageJson(st);
     assert.equal(constants.close_call_margin, 2.5);
     same(js, page);
   });

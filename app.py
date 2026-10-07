@@ -2,13 +2,13 @@
 Draft night server. One process, no build step, reads only from the local snapshot.
 
   python app.py prefetch     # run this the day before AND ~20 min before the draft
-  python app.py refresh      # in-season: force-refetch ESPN league data into the cache
-  python app.py post         # in-season: send this week's moves to Discord (--dry-run to preview)
   python app.py check-espn   # verify your league settings parsed correctly
-  python app.py capture-fixture  # record scrubbed ESPN responses for test_sources.py
+  python app.py capture-fixture  # record scrubbed ESPN responses for the app's tests (app/test)
   python app.py demo         # fake data, real math -- practice the keyboard flow
   python app.py reset        # clear draft state before a new draft
   python app.py serve        # draft night
+
+In-season help is the RosterOptimizer app (app/www): website + Android, JavaScript only.
 """
 
 import json
@@ -21,12 +21,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-import httpx
-
-import season
 import sources
 from engine import Board, DraftState
-from league import build_state
 
 HERE = pathlib.Path(__file__).parent
 DB = str(HERE / "snapshot.db")
@@ -171,43 +167,6 @@ def cmd_prefetch():
         print("  Every top-200 player matched a projection.")
 
 
-def cmd_post(dry_run: bool):
-    """Refetch ESPN, build this week's moves, send them to Discord (or print them)."""
-    import notify
-    c = load_config()
-    e = c["espn"]
-    raw = sources.load_season_raw(DB, e["league_id"], c["season"],
-                                  e.get("espn_s2", ""), e.get("swid", ""), force=True)
-    st = build_state(raw, e.get("swid", ""))
-    msg = notify.format_weekly(season.weekly_report(st), st)
-    url = (c.get("discord") or {}).get("webhook_url", "")
-    if dry_run or not url:
-        print(msg)
-        if not url:
-            print("\nNot sent: add discord.webhook_url to config.json (see config.example.json).")
-        return
-    notify.post_discord(url, msg)
-    print(f"Posted week {st.week} to Discord ({len(msg)} chars).")
-
-
-def cmd_refresh():
-    """In-season: force-refetch ESPN league data into the snapshot.db cache."""
-    c = load_config()
-    e = c["espn"]
-    raw = sources.load_season_raw(DB, e["league_id"], c["season"],
-                                  e.get("espn_s2", ""), e.get("swid", ""), force=True)
-    lg = sources.parse_league(raw["league"])
-    rows = [r for t in lg["teams"] for r in t["roster"]]
-    fa = raw["free_agents"].get("players", [])
-    print(f"Week {lg['week']}  (matchup period {lg['matchup_period']})")
-    print(f"  teams       {len(lg['teams'])}")
-    print(f"  rostered    {len(rows)}  with week-{lg['week']} projection: "
-          f"{sum(r['proj_week'] is not None for r in rows)}")
-    print(f"  free agents {len(fa)}")
-    for name, info in raw["info"].items():
-        print(f"  {name:13s} {info['source']}" + (f"  ({info['error']})" if "error" in info else ""))
-
-
 # ---------------------------------------------------------------------------
 # Server
 # ---------------------------------------------------------------------------
@@ -296,76 +255,10 @@ def api_undo():
     return snapshot_payload()
 
 
+@app.get("/")
 @app.get("/draft")
 def draft_page():
     return FileResponse(HERE / "static" / "index.html")
-
-
-# ---------------------------------------------------------------------------
-# Season (read-only against ESPN; loads lazily through the snapshot.db cache)
-# ---------------------------------------------------------------------------
-
-def _season_state(force: bool = False):
-    c = load_config()
-    e = c["espn"]
-    raw = sources.load_season_raw(DB, e["league_id"], c["season"],
-                                  e.get("espn_s2", ""), e.get("swid", ""), force=force)
-    return build_state(raw, e.get("swid", ""))
-
-
-def _player_json(st, p) -> dict:
-    g = p.game
-    return {
-        "id": p.player_id, "name": p.name, "pos": p.pos, "team": st.pro_abbrev(p.pro_team_id),
-        "slot": p.slot, "proj": round(p.week_pts, 1), "ros": round(p.proj_ros or 0.0, 1),
-        "injury": p.injury, "started_pct": p.pct_started, "owned_change": p.pct_change,
-        "status": p.status, "locked": p.locked, "outlook": p.outlook,
-        "game": None if g is None else {"opp": st.pro_abbrev(g["opp"]), "home": g["home"],
-                                        "kickoff_ms": g["kickoff_ms"]},
-    }
-
-
-def _team_json(t) -> dict:
-    return None if t is None else {"id": t.id, "name": t.name, "wins": t.wins,
-                                   "losses": t.losses, "ties": t.ties}
-
-
-@app.get("/api/season/week")
-def api_season_week(refresh: bool = False):
-    """The whole This-week page in one payload: the page always needs all of it."""
-    try:
-        st = _season_state(force=refresh)
-    except httpx.HTTPError as e:
-        return JSONResponse({"error": f"Couldn't reach ESPN and nothing is cached yet ({e})."},
-                            status_code=503)
-    r = season.weekly_report(st)
-    pj = lambda p: _player_json(st, p)
-    return {
-        "week": r["week"], "me": _team_json(r["me"]), "opponent": _team_json(r["opponent"]),
-        "current_total": round(r["current_total"], 1),
-        "optimal_total": round(r["optimal_total"], 1),
-        "opponent_total": None if r["opponent_total"] is None else round(r["opponent_total"], 1),
-        "problems": [{"player": pj(x["player"]), "kind": x["kind"], "message": x["message"]}
-                     for x in r["problems"]],
-        "ir_moves": [{"player": pj(m["player"]), "from": m["from"], "to": m["to"],
-                      "reason": m["reason"]} for m in r["ir_moves"]],
-        "deltas": [{"slot": d["slot"], "out": pj(d["out"]), "in": pj(d["in"]),
-                    "gain": round(d["gain"], 1)} for d in r["deltas"]],
-        "close_calls": [{"slot": c["slot"], "starter": pj(c["starter"]), "alt": pj(c["alt"]),
-                         "margin": round(c["margin"], 1)} for c in r["close_calls"]],
-        "pickups": [{"add": pj(w["add"]), "drop": pj(w["drop"]) if w["drop"] else None,
-                     "gain": round(w["gain"], 1), "ros_delta": round(w["ros_delta"], 1)}
-                    for w in r["pickups"]],
-        "starters": [{**pj(p), "slot": s} for s, p in r["starters"]],   # lineup slot wins over current
-        "data": {k: {"source": v["source"], "fetched_at": v["fetched_at"],
-                     "error": v.get("error")} for k, v in st.info.items()},
-        "constants": {"close_call_margin": season.CLOSE_CALL_MARGIN},
-    }
-
-
-@app.get("/")
-def index():
-    return FileResponse(HERE / "static" / "season.html")
 
 
 app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
@@ -375,10 +268,6 @@ if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "serve"
     if cmd == "prefetch":
         cmd_prefetch()
-    elif cmd == "refresh":
-        cmd_refresh()
-    elif cmd == "post":
-        cmd_post(dry_run="--dry-run" in sys.argv)
     elif cmd == "check-espn":
         cmd_check_espn()
     elif cmd == "capture-fixture":

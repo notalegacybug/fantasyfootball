@@ -1,5 +1,5 @@
-// weeklyReport -> the JSON the This-week screen renders. Port of app.api_season_week's
-// serializer, field for field, so the parity test can compare against Python's output.
+// weeklyReport -> the JSON the This-week screen renders. week.test.js compares it, field
+// for field, against the answer key in app/test/expected_week.json.
 
 import { weeklyReport, round1, CLOSE_CALL_MARGIN, BYE_LOOKAHEAD } from "./season.js";
 import { weekPts } from "./state.js";

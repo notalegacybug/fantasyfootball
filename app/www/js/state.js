@@ -1,9 +1,9 @@
-// The live league as the season math sees it. Port of league.py: no network, no
-// decision math. Players are plain objects; season.js copies rather than mutates them.
+// The live league as the season math sees it. No network, no decision math.
+// Players are plain objects; season.js copies rather than mutates them.
 
 import { parseLeague, parseFreeAgents, parseProSchedule } from "./espn.js";
 
-// ESPN statuses that mean "not playing this week" (league.py WONT_PLAY_STATUSES).
+// ESPN statuses that mean "not playing this week".
 // QUESTIONABLE usually plays, so it keeps its projection and is flagged in Fix first.
 export const WONT_PLAY_STATUSES = ["OUT", "DOUBTFUL", "INJURY_RESERVE", "SUSPENSION"];
 // ESPN's projection as-is: only the "status and projection disagree" checks use it.

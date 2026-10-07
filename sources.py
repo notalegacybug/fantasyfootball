@@ -289,52 +289,9 @@ def load_snapshot(db_path: str):
 
 
 # --------------------------------------------------------------------------
-# In-season: raw ESPN responses, cached
+# Raw ESPN responses, for `python app.py capture-fixture` only: the recorded fixtures
+# the app's tests (app/test) parse. The app itself fetches and parses in app/www/js/espn.js.
 # --------------------------------------------------------------------------
-
-# How stale ESPN data may be before refetch. Short enough that Sunday-morning
-# injury news lands before lock; long enough that a dev session doesn't hammer ESPN.
-CACHE_TTL_MINUTES = 30
-
-# Separate from SCHEMA on purpose: build_snapshot drops and rebuilds `players`,
-# and a draft prefetch must never wipe in-season data.
-CACHE_SCHEMA = """
-CREATE TABLE IF NOT EXISTS espn_cache (
-    key        TEXT PRIMARY KEY,
-    fetched_at REAL NOT NULL,
-    body       TEXT NOT NULL
-);
-"""
-
-
-def cached_fetch(db_path: str, key: str, fetch, ttl_minutes: float = CACHE_TTL_MINUTES,
-                 force: bool = False, now: float = None):
-    """Return (body, info). Serves the cache inside the TTL; otherwise calls fetch().
-    If the network fails and ANY cached copy exists, serves it marked 'stale' -- the
-    draft tool's works-with-wifi-off property, kept for the season tool. Callers must
-    surface info['source'] == 'stale', because an expired cookie (401) lands here too."""
-    now = time.time() if now is None else now
-    con = sqlite3.connect(db_path)
-    try:
-        con.executescript(CACHE_SCHEMA)
-        row = con.execute("SELECT fetched_at, body FROM espn_cache WHERE key = ?",
-                          (key,)).fetchone()
-        if row and not force and now - row[0] < ttl_minutes * 60:
-            return json.loads(row[1]), {"key": key, "fetched_at": row[0], "source": "cache"}
-        try:
-            body = fetch()
-        except (httpx.HTTPError, OSError) as e:
-            if row:
-                return json.loads(row[1]), {"key": key, "fetched_at": row[0],
-                                            "source": "stale", "error": str(e)}
-            raise
-        con.execute("INSERT OR REPLACE INTO espn_cache VALUES (?, ?, ?)",
-                    (key, now, json.dumps(body)))
-        con.commit()
-        return body, {"key": key, "fetched_at": now, "source": "network"}
-    finally:
-        con.close()
-
 
 def _espn_get(url: str, params, espn_s2: str = "", swid: str = "",
               headers: dict = None, timeout: float = 25.0) -> dict:
@@ -377,148 +334,15 @@ def fetch_espn_free_agents(league_id: str, season: int, week: int, espn_s2: str 
 
 def fetch_espn_pro_schedule(season: int) -> dict:
     """Full NFL schedule by week. Public, no auth. Raw, unlike fetch_espn_pro_teams,
-    because the season tool needs opponents and kickoffs, not just byes.
-    Each finished game carries ~290 KB of `plays` (play-by-play); dropped here so a
-    refresh doesn't write ~20 MB into the cache for data nothing reads."""
+    because the app needs opponents and kickoffs, not just byes.
+    Each finished game carries ~290 KB of `plays` (play-by-play); dropped here so the
+    recorded fixture doesn't carry ~20 MB of data nothing reads."""
     raw = _espn_get(f"{ESPN_BASE}/{season}", [("view", "proTeamSchedules")], timeout=15.0)
     for t in raw.get("settings", {}).get("proTeams", []):
         for games in (t.get("proGamesByScoringPeriod") or {}).values():
             for g in games:
                 g.pop("plays", None)
     return raw
-
-
-# statSplitTypeId, confirmed against the week-3 2026 fixture: period 0 carries TWO
-# projections -- split 0 is rest-of-season (~2 fewer games than split 2 for 133 of
-# 166 rostered players after week 2) and split 2 is the full season. Order varies.
-SPLIT_WEEK, SPLIT_REST_OF_SEASON, SPLIT_FULL_SEASON = 1, 0, 2
-
-
-def pick_stat(stats, season: int, period: int, source: int, split: int = None):
-    """The appliedTotal for one exact (season, scoringPeriodId, statSourceId[, split]).
-    source: 0 = actual, 1 = projected. period: 0 = season, N = week N.
-    split=None matches any split -- only safe where ESPN sends just one."""
-    for s in stats or []:
-        if (s.get("seasonId") == season and s.get("scoringPeriodId") == period
-                and s.get("statSourceId") == source
-                and (split is None or s.get("statSplitTypeId") == split)):
-            return _float_or_none(s.get("appliedTotal"))
-    return None
-
-
-def slot_name(slot_id: int) -> str:
-    """Fail loudly: a silently mis-slotted roster is how a zero-point player gets started."""
-    name = ESPN_SLOTS.get(slot_id)
-    if name is None:
-        raise ValueError(f"Unknown ESPN lineupSlotId {slot_id}. ESPN may have renumbered "
-                         f"its slots -- update ESPN_SLOTS in sources.py.")
-    return name
-
-
-def parse_player(p: dict, season: int, week: int) -> dict:
-    own = p.get("ownership") or {}
-    return {
-        "player_id": p.get("id"),
-        "name": p.get("fullName") or "",
-        "pos": ESPN_POSITION_ID.get(p.get("defaultPositionId")),
-        "pro_team_id": p.get("proTeamId"),
-        # Composite ids (3 = RB/WR, 5 = WR/TE, ...) are dropped: FLEX (23) already
-        # expresses the only multi-position slot this league uses.
-        "eligible": sorted({ESPN_SLOTS[s] for s in p.get("eligibleSlots", [])
-                            if s in ESPN_SLOTS}),
-        "proj_week": pick_stat(p.get("stats"), season, week, 1, SPLIT_WEEK),
-        "proj_ros": pick_stat(p.get("stats"), season, 0, 1, SPLIT_REST_OF_SEASON),
-        "injury": p.get("injuryStatus"),
-        "pct_started": _float_or_none(own.get("percentStarted")),
-        "pct_change": _float_or_none(own.get("percentChange")),
-        "outlook": p.get("seasonOutlook"),
-    }
-
-
-def parse_league(raw: dict, week: int = None) -> dict:
-    """Flatten a fetch_espn_league response into plain dicts. No domain logic here --
-    that lives in league.py, same split as build_snapshot -> engine.py."""
-    season = raw["seasonId"]
-    week = raw["scoringPeriodId"] if week is None else week
-
-    slots = {}
-    counts = raw.get("settings", {}).get("rosterSettings", {}).get("lineupSlotCounts", {})
-    for raw_id, count in counts.items():
-        if count:
-            slots[slot_name(int(raw_id))] = count
-
-    teams = []
-    for t in raw.get("teams", []):
-        roster = []
-        for e in (t.get("roster") or {}).get("entries", []):
-            p = (e.get("playerPoolEntry") or {}).get("player") or {}
-            roster.append({**parse_player(p, season, week), "slot": slot_name(e["lineupSlotId"])})
-        rec = (t.get("record") or {}).get("overall") or {}
-        name = t.get("name") or f"{t.get('location', '')} {t.get('nickname', '')}".strip()
-        teams.append({
-            "id": t["id"], "name": name, "abbrev": t.get("abbrev"),
-            "owners": t.get("owners", []),
-            "wins": rec.get("wins", 0), "losses": rec.get("losses", 0),
-            "ties": rec.get("ties", 0),
-            "points_for": rec.get("pointsFor", 0.0),
-            "points_against": rec.get("pointsAgainst", 0.0),
-            "roster": roster,
-        })
-
-    schedule = []
-    for m in raw.get("schedule", []):
-        home, away = m.get("home") or {}, m.get("away") or {}
-        schedule.append({
-            "period": m.get("matchupPeriodId"),
-            "home": home.get("teamId"), "away": away.get("teamId"),   # away is None on a bye
-            "home_pts": home.get("totalPoints"), "away_pts": away.get("totalPoints"),
-        })
-
-    return {
-        "season": season, "week": week, "current_week": raw.get("scoringPeriodId"),
-        "matchup_period": raw.get("status", {}).get("currentMatchupPeriod"),
-        "slots": slots, "teams": teams, "schedule": schedule,
-    }
-
-
-def parse_free_agents(raw: dict, season: int, week: int) -> list:
-    return [{**parse_player(e.get("player") or {}, season, week), "status": e.get("status")}
-            for e in raw.get("players", [])]
-
-
-def parse_pro_schedule(raw: dict) -> dict:
-    out = {}
-    for t in raw.get("settings", {}).get("proTeams", []):
-        if not t.get("id"):
-            continue          # id 0 is ESPN's "FA" pseudo-team
-        games = {}
-        for wk, gs in (t.get("proGamesByScoringPeriod") or {}).items():
-            for g in gs:
-                home = g.get("homeProTeamId") == t["id"]
-                games[int(wk)] = {
-                    "opp": g.get("awayProTeamId") if home else g.get("homeProTeamId"),
-                    "home": home, "kickoff_ms": g.get("date"),
-                }
-        out[t["id"]] = {"abbrev": t.get("abbrev"), "bye": _int_or_none(t.get("byeWeek")),
-                        "games": games}
-    return out
-
-
-def load_season_raw(db_path: str, league_id: str, season: int, espn_s2: str = "",
-                    swid: str = "", force: bool = False) -> dict:
-    """Everything the season tool reads, via the cache. The week comes from the league
-    response's scoringPeriodId -- never from the calendar (spec 4.4)."""
-    league, li = cached_fetch(db_path, f"league:{league_id}:{season}",
-                              lambda: fetch_espn_league(league_id, season, espn_s2, swid),
-                              force=force)
-    week = league["scoringPeriodId"]
-    fa, fi = cached_fetch(db_path, f"fa:{league_id}:{season}:wk{week}",
-                          lambda: fetch_espn_free_agents(league_id, season, week, espn_s2, swid),
-                          force=force)
-    pro, pi = cached_fetch(db_path, f"pro:{season}",
-                           lambda: fetch_espn_pro_schedule(season), force=force)
-    return {"league": league, "free_agents": fa, "pro_schedule": pro,
-            "info": {"league": li, "free_agents": fi, "pro_schedule": pi}}
 
 
 # --------------------------------------------------------------------------

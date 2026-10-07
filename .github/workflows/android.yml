@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: 22
 
-      - name: Parity tests (JS must match the Python answers)
+      - name: Tests (answer key, ESPN parser, bye weeks)
         run: node --test
 
       - uses: actions/setup-java@v4

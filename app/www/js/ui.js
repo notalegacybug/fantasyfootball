@@ -43,7 +43,12 @@ export function weekPage(d, manual = null) {
   </div>`;
   }
 
-  h += card("Fix first", d.problems.map(x => row(who(x.player), esc(x.message))),
+  // Yahoo mode: a problem player who is still in the best lineup has no backup on the roster,
+  // so "fix first" alone would contradict "Set this lineup". Say what to do instead.
+  const starterIds = new Set(d.starters.map(p => p.id));
+  const noBackup = p => (manual && starterIds.has(p.id)
+    ? `<br><span class="m">No one else on your roster can play here. See Pickups.</span>` : "");
+  h += card("Fix first", d.problems.map(x => row(`${who(x.player)}${noBackup(x.player)}`, esc(x.message))),
     `<span class="good">All clear.</span>`, d.problems.length ? "danger" : "");
 
   h += card("IR moves", d.ir_moves.map(m =>

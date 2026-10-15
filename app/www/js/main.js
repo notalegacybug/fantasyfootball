@@ -309,15 +309,20 @@ async function startManual({ force = false } = {}) {
   }
   if (!manualCfg.roster.length) return rosterScreen();
   show(ui.loadingPage("Reading ESPN's predictions..."));
+  let data, offline = false;
   try {
-    manualData = await loadManualData(manualCfg, force);
-    if (gen === screenGen) showManualWeek();
+    data = await loadManualData(manualCfg, force);
   } catch (e) {
-    if (gen !== screenGen) return;
-    if (!manualData) return show(ui.errorBox(`Couldn't reach ESPN: ${e.message}`));
-    showManualWeek();
-    $("#age").textContent = "couldn't reach ESPN, showing saved predictions";
+    // No network: fall back to this session's load, else the predictions saved on the phone.
+    const pool = store.load(`pool.${manualCfg.scoring}`)?.value;
+    data = manualData ?? manual.savedData(pool, pool && store.load(`pro.${pool.season}`)?.value);
+    if (gen === screenGen && !data) show(ui.errorBox(`Couldn't reach ESPN: ${e.message}`));
+    offline = true;
   }
+  if (gen !== screenGen || !data) return;
+  manualData = data;
+  showManualWeek();
+  if (offline) $("#age").textContent = "couldn't reach ESPN, showing saved predictions";
 }
 
 function showWeek(page, at, note) {

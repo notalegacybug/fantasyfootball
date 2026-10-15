@@ -157,3 +157,30 @@ test("search results: not-found message, add buttons, nothing under 2 letters", 
   assert.match(html, /SEA/);
   assert.doesNotMatch(html, /<b>/, "names are escaped");
 });
+
+// --- Final review fixes -------------------------------------------------------------------
+
+test("search: iPhone's curly apostrophe finds the player", () => {
+  const rows = [{ player_id: 2, name: "Ja'Marr Chase" }];
+  assert.deepEqual(manual.searchPool(rows, "Ja’Marr").map(r => r.player_id), [2]);
+});
+
+test("saved data: rebuilt from the phone's caches when ESPN can't be reached", () => {
+  const pool = { season, week, rows: ppr };
+  const pro = { 1: { abbrev: "ATL", bye: 5, games: {} } };
+  assert.deepEqual(manual.savedData(pool, pro), { season, week, rows: ppr, pro });
+  assert.equal(manual.savedData(null, pro), null, "no saved predictions");
+  assert.equal(manual.savedData(pool, null), null, "no saved NFL schedule");
+});
+
+test("week page, Yahoo mode: a 'fix first' starter is explained as having no backup", () => {
+  const page = pageJson(build(sampleConfig()));
+  const starter = page.starters[0];
+  const bench = { ...starter, id: -5 };
+  page.problems = [{ player: starter, kind: "bye", message: "on bye this week" },
+                   { player: bench, kind: "bye", message: "on bye this week" }];
+  const html = weekPage(page, { edited: "today", hidden: [] });
+  assert.equal((html.match(/No one else on your roster can play here/g) || []).length, 1,
+               "only the problem player who is still in the best lineup gets the note");
+  assert.doesNotMatch(weekPage(page), /No one else on your roster/, "ESPN mode unchanged");
+});

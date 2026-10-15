@@ -51,14 +51,21 @@ export async function poolFor(fetchRows, scoring) {
   return rows.filter(r => r.pos);
 }
 
-// "smith njigba" finds Smith-Njigba, "jamarr" finds Ja'Marr, "nunez" finds Núñez.
+// "smith njigba" finds Smith-Njigba, "jamarr" finds Ja'Marr, "nunez" finds Núñez. iPhones type
+// curly apostrophes by default, so those are dropped like straight ones.
 const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-  .replace(/['.]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  .replace(/['\u2018\u2019.]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
 export function searchPool(rows, query, excludeIds = new Set(), n = 8) {
   const q = norm(query);
   if (q.length < 2) return [];
   return rows.filter(r => !excludeIds.has(r.player_id) && norm(r.name).includes(q)).slice(0, n);
+}
+
+// Offline fallback: the last saved predictions (pool cache value) + NFL schedule, whatever
+// their age, or null when either is missing.
+export function savedData(pool, pro) {
+  return pool && pro ? { season: pool.season, week: pool.week, rows: pool.rows, pro } : null;
 }
 
 const MY_TEAM = 1;

@@ -62,3 +62,71 @@ test("search: ignores case, hyphens, dots, apostrophes and accents; skips owned 
   assert.deepEqual(ids("j"), [], "one letter is too short to search");
   assert.deepEqual(manual.searchPool(rows, "ja", new Set([1])).map(r => r.player_id), [2]);
 });
+
+import { pageJson } from "../www/js/report.js";
+
+const healthy = r => !r.injury || r.injury === "ACTIVE";
+const byPos = pos => ppr.filter(r => r.pos === pos && healthy(r));
+
+// A legal, healthy Yahoo roster from the fixture: 15 players for 16 spots.
+function sampleConfig() {
+  const cfg = manual.newConfig("Test league", "ppr", manual.YAHOO_DEFAULT_SLOTS);
+  cfg.roster = [...byPos("QB").slice(0, 2), ...byPos("RB").slice(0, 4), ...byPos("WR").slice(0, 5),
+                ...byPos("TE").slice(0, 2), ...byPos("K").slice(0, 1), ...byPos("DST").slice(0, 1)]
+    .map(manual.rosterEntry);
+  return cfg;
+}
+const build = (cfg, pro = {}, nowMs = Date.now()) =>
+  manual.buildManualState(cfg, ppr, pro, { season, week, nowMs });
+
+test("manual state: everyone placed in the best lineup, so no lineup changes", () => {
+  const page = pageJson(build(sampleConfig()));
+  assert.deepEqual(page.deltas, []);
+  assert.equal(page.starters.length, 10, "QB, 3 WR, 2 RB, TE, W/R/T, K, DEF all filled");
+  assert.equal(page.current_total, page.optimal_total);
+  assert.equal(page.opponent, null);
+});
+
+test("manual state: free agents exclude my roster and players marked taken", () => {
+  const cfg = sampleConfig();
+  const mine = new Set(cfg.roster.map(e => e.id));
+  const other = ppr.find(r => !mine.has(r.player_id));
+  cfg.taken = [other.player_id];
+  const st = build(cfg);
+  const fa = new Set(st.freeAgents.map(p => p.player_id));
+  assert.ok(![...mine].some(id => fa.has(id)), "a rostered player is listed as a free agent");
+  assert.ok(!fa.has(other.player_id), "a taken player is listed as a free agent");
+  assert.equal(st.freeAgents.length, ppr.length - mine.size - 1);
+});
+
+test("manual state: a player marked IR is not placed; a healthy one is told to come out", () => {
+  const cfg = sampleConfig();
+  const rb = cfg.roster.find(e => e.pos === "RB");
+  rb.ir = true;
+  const st = build(cfg);
+  assert.equal(st.me.roster.find(p => p.player_id === rb.id).slot, "IR", "placement moved an IR player");
+  // The sample is healthy, so the existing IR rule (healthy players leave IR first) applies --
+  // the same advice an ESPN league gets.
+  assert.ok(pageJson(st).ir_moves.some(m => m.player.id === rb.id && m.from === "IR"));
+});
+
+test("manual state: a player whose game already kicked off is still placed", () => {
+  const cfg = sampleConfig();
+  const qb = ppr.find(r => r.player_id === cfg.roster[0].id);    // the top QB
+  const pro = { [qb.pro_team_id]: { abbrev: "XX", bye: null,
+                                    games: { [week]: { opp: 0, home: true, kickoff_ms: 1 } } } };
+  const st = build(cfg, pro);
+  const p = st.me.roster.find(x => x.player_id === qb.player_id);
+  assert.equal(p.locked, true);
+  assert.equal(p.slot, "QB", "locked QB benched: he could never be placed");
+});
+
+test("manual state: a player missing from ESPN's list is kept, flagged, with no prediction", () => {
+  const cfg = sampleConfig();
+  cfg.roster.push({ id: 999999999, name: "Gone Player", pos: "RB", eligible: ["RB", "FLEX", "BENCH", "IR"],
+                    pro_team_id: 0, ir: false });
+  const p = build(cfg).me.roster.find(x => x.player_id === 999999999);
+  assert.ok(p, "dropped silently");
+  assert.equal(p.missing, true);
+  assert.equal(p.proj_week, null);
+});

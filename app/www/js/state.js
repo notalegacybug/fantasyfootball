@@ -20,15 +20,10 @@ export function findMyTeamId(teams, swid) {
   return t ? t.id : null;
 }
 
-// raw = {league, free_agents, pro_schedule}. pro_schedule may be passed already parsed
-// (the app caches the parsed form) -- detected by the absence of `settings`.
-// The team is the SWID's team when signed in, else the team the user picked.
-export function buildState(raw, { swid = "", teamId = null, nowMs = Date.now() } = {}) {
-  const lg = parseLeague(raw.league);
-  const pro = raw.pro_schedule.settings ? parseProSchedule(raw.pro_schedule) : raw.pro_schedule;
-  const week = lg.week;
-
-  const player = row => {
+// One parsed row -> the player shape season.js reads: adds this week's game, whether it has
+// kicked off (locked) and the bye week. Shared by the ESPN path and Yahoo-by-hand (manual.js).
+export function statePlayer(pro, week, nowMs) {
+  return row => {
     const game = pro[row.pro_team_id]?.games?.[week] ?? null;
     const locked = Boolean(game && game.kickoff_ms && game.kickoff_ms <= nowMs);
     return {
@@ -39,6 +34,17 @@ export function buildState(raw, { swid = "", teamId = null, nowMs = Date.now() }
       game, locked, bye: pro[row.pro_team_id]?.bye ?? null,
     };
   };
+}
+
+// raw = {league, free_agents, pro_schedule}. pro_schedule may be passed already parsed
+// (the app caches the parsed form) -- detected by the absence of `settings`.
+// The team is the SWID's team when signed in, else the team the user picked.
+export function buildState(raw, { swid = "", teamId = null, nowMs = Date.now() } = {}) {
+  const lg = parseLeague(raw.league);
+  const pro = raw.pro_schedule.settings ? parseProSchedule(raw.pro_schedule) : raw.pro_schedule;
+  const week = lg.week;
+
+  const player = statePlayer(pro, week, nowMs);
 
   const teams = lg.teams.map(t => ({
     id: t.id, name: t.name, abbrev: t.abbrev, owners: t.owners, wins: t.wins,

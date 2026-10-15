@@ -52,7 +52,7 @@ export async function poolFor(fetchRows, scoring) {
 }
 
 // "smith njigba" finds Smith-Njigba, "jamarr" finds Ja'Marr, "nunez" finds Núñez.
-const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
   .replace(/['.]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
 export function searchPool(rows, query, excludeIds = new Set(), n = 8) {

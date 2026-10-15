@@ -75,6 +75,31 @@ export function fetchProSchedule(get, season) {
   return getJson(get, url(`${ESPN_BASE}/${season}`, [["view", "proTeamSchedules"]]));
 }
 
+// Current NFL week without a league (Yahoo-by-hand has no ESPN league to ask).
+export async function fetchCurrentWeek(get, season) {
+  return (await getJson(get, `${ESPN_BASE}/${season}`)).currentScoringPeriod.id;
+}
+
+export const POOL_LIMIT = 600;
+
+// ESPN's public player list with its default-league predictions: leaguedefaults/3 = PPR,
+// /1 = standard. No league, no auth; CORS allows our site (measured 2026-10-15). Stats are
+// trimmed to this week + season, ~911 KB on the wire for 600 players. Rows carry the same
+// stat entries parsePlayer reads, so parseFreeAgents parses them unchanged.
+export function fetchPlayerPool(get, season, week, leagueDefaultsId, limit = POOL_LIMIT) {
+  const flt = { players: {
+    filterSlotIds: { value: FREE_AGENT_SLOT_IDS },
+    sortPercOwned: { sortPriority: 1, sortAsc: false },
+    limit,
+    filterStatsForTopScoringPeriodIds: {
+      value: 2, additionalValue: [`10${season}`, `11${season}${week}`, `00${season}`, `02${season}`] },
+  } };
+  return getJson(get,
+    url(`${ESPN_BASE}/${season}/segments/0/leaguedefaults/${leagueDefaultsId}`,
+        [["view", "kona_player_info"], ["scoringPeriodId", week]]),
+    { "x-fantasy-filter": JSON.stringify(flt) });
+}
+
 // --------------------------------------------------------------------------
 // Parsing: ESPN JSON -> plain shape. Same rules as sources.py, kept in the same order.
 // --------------------------------------------------------------------------

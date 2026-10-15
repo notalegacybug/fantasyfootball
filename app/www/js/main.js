@@ -8,7 +8,8 @@ import * as espn from "./espn.js";
 import { buildState, findMyTeamId } from "./state.js";
 import { pageJson } from "./report.js";
 import { LOW_PROJECTION_FLAG, CLOSE_CALL_MARGIN, WAIVER_SHORTLIST, BYE_LOOKAHEAD,
-         STASH_MIN_ROS_GAIN } from "./season.js";
+         STASH_MIN_ROS_GAIN, rosterLimit } from "./season.js";
+import * as manual from "./manual.js";
 import { isNative, makeGet, capacitorCore } from "./transport.js";
 import { espnLogin } from "./login.js";
 import * as store from "./store.js";
@@ -22,6 +23,13 @@ const show = html => { $("#app").innerHTML = html; };
 
 let cookies = store.load("cookies");          // Android only: {espn_s2, swid}
 let settings = store.load("settings", {});    // {leagueId, teamId}
+
+// settings is ESPN {leagueId, teamId} or Yahoo-by-hand {source: "manual", manualId}.
+const isManual = () => settings.source === "manual";
+const manualKey = id => `manual.${id}`;
+let manualCfg = null;     // the open Yahoo setup
+let manualData = null;    // {season, week, rows, pro}: lets Taken/Show redraw without ESPN
+const DAY = 86400e3;
 
 // ---------------------------------------------------------------------------
 // Data
@@ -60,6 +68,40 @@ async function loadWeek(leagueId, teamId) {
   return pageJson(st);
 }
 
+async function currentWeek(get, season) {
+  const key = `week.${season}`;
+  const cached = store.loadFresh(key, HOUR);
+  if (cached) return cached;
+  const w = await espn.fetchCurrentWeek(get, season);
+  store.saveFresh(key, w);
+  return w;
+}
+
+// One cache key per scoring type, overwritten each week: a key per week would fill
+// localStorage (~300 KB a week) by mid-season.
+async function loadManualData(cfg, force) {
+  const get = makeGet(null);
+  const key = `pool.${cfg.scoring}`;
+  const season = await currentSeason(get);
+  const [week, pro] = await Promise.all([currentWeek(get, season), proSchedule(get, season)]);
+  const fresh = store.loadFresh(key, 12 * HOUR);
+  if (!force && fresh && fresh.season === season && fresh.week === week) {
+    return { season, week, rows: fresh.rows, pro };
+  }
+  const fetchRows = async id => espn.parseFreeAgents(
+    await espn.fetchPlayerPool(get, season, week, id), season, week);
+  const rows = await manual.poolFor(fetchRows, cfg.scoring);
+  store.saveFresh(key, { season, week, rows });
+  return { season, week, rows, pro };
+}
+
+function saveManual() { store.save(manualKey(settings.manualId), manualCfg); }
+
+const editedText = at => {
+  const days = Math.floor((Date.now() - at) / DAY);
+  return days < 1 ? "today" : days === 1 ? "1 day ago" : `${days} days ago`;
+};
+
 // ---------------------------------------------------------------------------
 // Screens
 // ---------------------------------------------------------------------------
@@ -68,8 +110,8 @@ function header() {
   const signedIn = isNative() && cookies;
   $("#nav-right").innerHTML = [
     `<span id="age"></span>`,
-    settings.leagueId ? `<button id="refresh">Refresh</button>` : "",
-    settings.leagueId ? `<button id="switch">League</button>` : "",
+    (settings.leagueId || isManual()) ? `<button id="refresh">Refresh</button>` : "",
+    (settings.leagueId || isManual()) ? `<button id="switch">League</button>` : "",
     signedIn ? `<button id="signout">Sign out</button>` : "",
     `<button id="how" aria-label="How it works" title="How it works">?</button>`,
   ].join("");
@@ -89,8 +131,20 @@ function header() {
 function askLeague(error) {
   screenGen++;
   history.replaceState(null, "", "/");
-  show(ui.setupPage(settings.leagueId, error));
+  const yahoo = store.load("manualIds", [])
+    .map(id => ({ id, name: store.load(manualKey(id))?.name })).filter(y => y.name);
+  show(ui.setupPage(settings.leagueId, error, yahoo));
   header();
+  $("#yahoo-new").addEventListener("click", () => yahooNew());
+  for (const b of document.querySelectorAll("button.yahoo-open")) {
+    b.addEventListener("click", () => {
+      settings = { source: "manual", manualId: b.dataset.id };
+      store.save("settings", settings);
+      manualCfg = null;
+      manualData = null;
+      start();
+    });
+  }
   $("#league-form").addEventListener("submit", e => {
     e.preventDefault();
     const id = $("#league-id").value.trim();
@@ -144,6 +198,128 @@ function pickTeam(teams) {
   }
 }
 
+function yahooNew(error, draft) {
+  screenGen++;
+  const cfg = draft ?? manual.newConfig("", "ppr", manual.YAHOO_DEFAULT_SLOTS);
+  show(ui.manualSetupPage(cfg, error));
+  for (const b of document.querySelectorAll("button[data-slot]")) {
+    b.addEventListener("click", () => {
+      const s = b.dataset.slot;
+      cfg.slots[s] = Math.max(0, Math.min(10, (cfg.slots[s] || 0) + Number(b.dataset.step)));
+      $(`#slot-${s}`).textContent = cfg.slots[s];
+    });
+  }
+  $("#manual-form").addEventListener("submit", e => {
+    e.preventDefault();
+    cfg.name = $("#manual-name").value.trim();
+    cfg.scoring = document.querySelector("input[name=scoring]:checked")?.value || "ppr";
+    if (!cfg.name) return yahooNew("Give the league a name, so you can tell it apart later.", cfg);
+    cfg.slots = Object.fromEntries(Object.entries(cfg.slots).filter(([, n]) => n > 0));
+    const id = Date.now().toString(36);
+    store.save("manualIds", [...store.load("manualIds", []), id]);
+    settings = { source: "manual", manualId: id };
+    store.save("settings", settings);
+    manualCfg = cfg;
+    manualData = null;
+    saveManual();
+    rosterScreen();
+  });
+}
+
+async function rosterScreen() {
+  const gen = ++screenGen;
+  header();
+  if (!manualData) {
+    show(ui.loadingPage("Loading ESPN's player list..."));
+    try { manualData = await loadManualData(manualCfg, false); }
+    catch (e) { if (gen === screenGen) show(ui.errorBox(`Couldn't reach ESPN: ${e.message}`)); return; }
+    if (gen !== screenGen) return;
+  }
+  const { rows, pro } = manualData;
+  const inPool = new Set(rows.map(r => r.player_id));
+  const missing = new Set(manualCfg.roster.filter(e => !inPool.has(e.id)).map(e => e.id));
+  show(ui.rosterPage(manualCfg, rosterLimit(manualCfg.slots), missing, store.available()));
+  const abbrev = id => pro[id]?.abbrev || "FA";
+  const search = $("#search");
+  // Only #results redraws while typing, so the box keeps focus and what's typed.
+  search.addEventListener("input", () => {
+    const mine = new Set(manualCfg.roster.map(e => e.id));
+    $("#results").innerHTML = ui.searchResults(manual.searchPool(rows, search.value, mine), search.value, abbrev);
+  });
+  const edited = () => { manualCfg.editedAt = Date.now(); saveManual(); rosterScreen(); };
+  $("#results").addEventListener("click", e => {
+    const id = Number(e.target.closest("button[data-add]")?.dataset.add);
+    const row = rows.find(r => r.player_id === id);
+    if (!row) return;
+    manualCfg.roster.push(manual.rosterEntry(row));
+    edited();
+  });
+  for (const b of document.querySelectorAll("button[data-ir]")) {
+    b.addEventListener("click", () => {
+      const e = manualCfg.roster.find(r => r.id === Number(b.dataset.ir));
+      e.ir = !e.ir;
+      edited();
+    });
+  }
+  for (const b of document.querySelectorAll("button[data-remove]")) {
+    b.addEventListener("click", () => {
+      manualCfg.roster = manualCfg.roster.filter(r => r.id !== Number(b.dataset.remove));
+      edited();
+    });
+  }
+  $("#roster-done").addEventListener("click", () => {
+    if (!manualCfg.roster.length) return $("#search").focus();
+    start();
+  });
+  search.focus();
+}
+
+function showManualWeek() {
+  const { season, week, rows, pro } = manualData;
+  const st = manual.buildManualState(manualCfg, rows, pro, { season, week, nowMs: Date.now() });
+  const name = new Map(rows.map(r => [r.player_id, r.name]));
+  const hidden = manualCfg.taken.map(id => ({ id, name: name.get(id) || "Unknown player" }));
+  show(ui.weekPage(pageJson(st), { edited: editedText(manualCfg.editedAt), hidden }));
+  $("#age").textContent = `ESPN predictions, week ${week}`;
+  $("#edit-roster").addEventListener("click", () => rosterScreen());
+  for (const b of document.querySelectorAll("button[data-taken]")) {
+    b.addEventListener("click", () => {
+      manualCfg.taken.push(Number(b.dataset.taken));
+      saveManual();
+      showManualWeek();
+    });
+  }
+  for (const b of document.querySelectorAll("button[data-untake]")) {
+    b.addEventListener("click", () => {
+      manualCfg.taken = manualCfg.taken.filter(id => id !== Number(b.dataset.untake));
+      saveManual();
+      showManualWeek();
+    });
+  }
+}
+
+async function startManual({ force = false } = {}) {
+  const gen = ++screenGen;
+  history.replaceState(null, "", "/");
+  manualCfg = manual.readConfig(store.load(manualKey(settings.manualId))) ?? manualCfg;
+  if (!manualCfg) {
+    settings = {};
+    store.save("settings", settings);
+    return askLeague("That Yahoo league isn't saved on this device any more. Set it up again.");
+  }
+  if (!manualCfg.roster.length) return rosterScreen();
+  show(ui.loadingPage("Reading ESPN's predictions..."));
+  try {
+    manualData = await loadManualData(manualCfg, force);
+    if (gen === screenGen) showManualWeek();
+  } catch (e) {
+    if (gen !== screenGen) return;
+    if (!manualData) return show(ui.errorBox(`Couldn't reach ESPN: ${e.message}`));
+    showManualWeek();
+    $("#age").textContent = "couldn't reach ESPN, showing saved predictions";
+  }
+}
+
 function showWeek(page, at, note) {
   show(ui.weekPage(page));
   const mins = Math.round((Date.now() - at) / 60e3);
@@ -161,6 +337,7 @@ async function start({ force = false } = {}) {
   const gen = ++screenGen;
   const stale = () => gen !== screenGen;
   header();
+  if (isManual()) return startManual({ force });
   if (!settings.leagueId) return askLeague();
   history.replaceState(null, "", `/league/${settings.leagueId}`);
   const cacheKey = `page.${settings.leagueId}.${settings.teamId ?? "me"}`;

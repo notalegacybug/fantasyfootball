@@ -20,6 +20,15 @@ export function remove(key) {
   try { localStorage.removeItem(PREFIX + key); } catch { /* nothing to do */ }
 }
 
+// False in private windows / blocked site data: the app still runs but forgets on close.
+export function available() {
+  try {
+    localStorage.setItem(PREFIX + "probe", "1");
+    localStorage.removeItem(PREFIX + "probe");
+    return true;
+  } catch { return false; }
+}
+
 // Value cached with a time-to-live: returns null once older than ttlMs.
 export function loadFresh(key, ttlMs) {
   const v = load(key);

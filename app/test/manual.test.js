@@ -130,3 +130,30 @@ test("manual state: a player missing from ESPN's list is kept, flagged, with no 
   assert.equal(p.missing, true);
   assert.equal(p.proj_week, null);
 });
+
+import { weekPage, searchResults } from "../www/js/ui.js";
+
+test("week page, Yahoo mode: set-this-lineup card, Taken buttons, no lineup-changes card", () => {
+  const cfg = sampleConfig();
+  const page = pageJson(build(cfg));
+  const html = weekPage(page, { edited: "today", hidden: [{ id: 7, name: "Hidden Guy" }] });
+  assert.match(html, /Set this lineup in Yahoo/);
+  assert.doesNotMatch(html, /Lineup changes/);
+  assert.doesNotMatch(html, /No opponent/);
+  assert.match(html, /id="edit-roster"/);
+  assert.match(html, /data-untake="7"/);
+  if (page.pickups.length) assert.match(html, new RegExp(`data-taken="${page.pickups[0].add.id}"`));
+  const espnHtml = weekPage(page);
+  assert.match(espnHtml, /Lineup changes/, "ESPN mode unchanged");
+  assert.doesNotMatch(espnHtml, /data-taken/);
+});
+
+test("search results: not-found message, add buttons, nothing under 2 letters", () => {
+  const rows = [{ player_id: 5, name: "A <b>", pos: "WR", pro_team_id: 1 }];
+  assert.equal(searchResults(rows, "a", () => "X"), "");
+  assert.match(searchResults([], "zz", () => "X"), /Not found in ESPN's top 600/);
+  const html = searchResults(rows, "ab", () => "SEA");
+  assert.match(html, /data-add="5"/);
+  assert.match(html, /SEA/);
+  assert.doesNotMatch(html, /<b>/, "names are escaped");
+});

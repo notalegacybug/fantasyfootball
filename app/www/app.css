@@ -61,3 +61,11 @@ button:disabled { opacity: .5; }
 .field-err { color: var(--danger); font-size: 13px; }
 button.team { display: flex; justify-content: space-between; width: 100%; margin: 6px 0 !important;
               padding: 10px 12px; font-size: 14px; text-align: left; }
+
+/* Yahoo-by-hand screens */
+.choice { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+.stepper { display: inline-flex; align-items: center; gap: 10px; }
+.stepper b { min-width: 1.5em; text-align: center; }
+.warn-text { color: var(--warn); }
+button.taken { margin-left: 6px; }
+.hidden-list button { margin-left: 4px; }

@@ -22,13 +22,26 @@ function card(title, rows, empty, cls = "") {
 }
 const row = (left, right) => `<div class="row"><span>${left}</span><span class="m">${right}</span></div>`;
 
-export function weekPage(d) {
+// Yahoo-by-hand doesn't know waivers vs free agent, so no pill there.
+const status = (p, manual) => (manual ? "" : `<span class="pill ${p.status === "WAIVERS" ? "warn" : "ok"}">${p.status === "WAIVERS" ? "waivers" : "free agent"}</span>`);
+const taken = (p, manual) => (manual ? ` <button class="taken" data-taken="${p.id}">Taken</button>` : "");
+
+// manual: null for ESPN leagues; for Yahoo-by-hand {edited: "3 days ago", hidden: [{id, name}]}.
+export function weekPage(d, manual = null) {
   const gain = d.optimal_total - d.current_total;
-  let h = `<div class="stats">
+  let h = "";
+  if (manual) {
+    h += `<div class="row"><span class="m">Roster edited ${esc(manual.edited)}</span><button id="edit-roster">Edit roster</button></div>
+    <div class="stats">
+      <div class="stat"><div class="l">Week ${d.week} · ${esc(d.me.name)}</div><div class="v">${pts(d.optimal_total)}</div></div>
+    </div>`;
+  } else {
+    h += `<div class="stats">
     <div class="stat"><div class="l">Week ${d.week} · ${esc(d.me.name)} (${rec(d.me)})</div><div class="v">${pts(d.current_total)}</div></div>
     <div class="stat"><div class="l">${d.opponent ? esc(d.opponent.name) + " (" + rec(d.opponent) + ")" : "No opponent"}</div><div class="v">${d.opponent_total == null ? "-" : pts(d.opponent_total)}</div></div>
     <div class="stat"><div class="l">Points left on bench</div><div class="v ${gain > 0.05 ? "" : "good"}">${pts(gain)}</div></div>
   </div>`;
+  }
 
   h += card("Fix first", d.problems.map(x => row(who(x.player), esc(x.message))),
     `<span class="good">All clear.</span>`, d.problems.length ? "danger" : "");
@@ -37,16 +50,23 @@ export function weekPage(d) {
     row(who(m.player), `${m.from.toLowerCase()} &rarr; ${m.to.toLowerCase()} · ${esc(m.reason)}`)),
     "Nothing to move.");
 
-  h += card("Lineup changes", d.deltas.map(x =>
-    row(`Start ${who(x.in)}<br><span class="m">instead of ${esc(x.out.name)} (${pts(x.out.proj)})</span>`,
-        `${esc(x.slot)} · ${pts(x.in.proj)} · <b class="good">+${pts(x.gain)}</b>`)),
-    `<span class="good">None. Your lineup is already the best one.</span>`);
+  if (!manual) {
+    h += card("Lineup changes", d.deltas.map(x =>
+      row(`Start ${who(x.in)}<br><span class="m">instead of ${esc(x.out.name)} (${pts(x.out.proj)})</span>`,
+          `${esc(x.slot)} · ${pts(x.in.proj)} · <b class="good">+${pts(x.gain)}</b>`)),
+      `<span class="good">None. Your lineup is already the best one.</span>`);
+  }
 
   h += card("Pickups", d.pickups.map(w =>
-    row(`${who(w.add)} <span class="pill ${w.add.status === "WAIVERS" ? "warn" : "ok"}">${w.add.status === "WAIVERS" ? "waivers" : "free agent"}</span><br>
+    row(`${who(w.add)} ${status(w.add, manual)}${taken(w.add, manual)}<br>
          <span class="m">${game(w.add)} · proj ${pts(w.add.proj)} · owned ${w.add.owned_change > 0 ? "+" : ""}${pts(w.add.owned_change)}% this week</span>`,
         `+${pts(w.gain)} this week · ${w.drop ? "drop " + esc(w.drop.name) : "no drop needed"}<br>rest of season ${w.ros_delta >= 0 ? "+" : ""}${pts(w.ros_delta)}`)),
     "No free agent would crack your lineup this week.");
+
+  if (manual && manual.hidden.length) {
+    h += `<p class="m hidden-list">Hidden as taken: ${manual.hidden.map(x =>
+      `${esc(x.name)} <button data-untake="${x.id}">Show</button>`).join(" · ")}</p>`;
+  }
 
   h += card("Bye weeks ahead", d.bye_crunch.map(c =>
     row(`<b>Week ${c.week}</b>: only ${slotsText(c.short)}<br>
@@ -57,7 +77,7 @@ export function weekPage(d) {
 
   if (d.stash.length) {
     h += card("Stash (on bye now, worth holding)", d.stash.map(w =>
-      row(`${who(w.add)} <span class="pill ${w.add.status === "WAIVERS" ? "warn" : "ok"}">${w.add.status === "WAIVERS" ? "waivers" : "free agent"}</span><br>
+      row(`${who(w.add)} ${status(w.add, manual)}${taken(w.add, manual)}<br>
            <span class="m">on bye this week · scores 0 now</span>`,
           `rest of season <b class="good">+${pts(w.ros_delta)}</b><br>${w.drop ? "drop " + esc(w.drop.name) : "no drop needed"}`)), "");
   }
@@ -67,7 +87,7 @@ export function weekPage(d) {
         `<span class="pill warn">${pts(c.margin)} pts</span> started ${pts(c.starter.started_pct)}% / ${pts(c.alt.started_pct)}%`)),
     "No start/sit decisions are close.", "warn");
 
-  h += card("Your best lineup", d.starters.map(p =>
+  h += card(manual ? "Set this lineup in Yahoo" : "Your best lineup", d.starters.map(p =>
     row(`<span class="m">${esc(p.slot)}</span> ${who(p)}`, `${game(p)} · ${pts(p.proj)}`)), "");
 
   h += `<section class="card setup">
@@ -83,7 +103,7 @@ export function weekPage(d) {
 // browser, which hands the .ics file to the calendar app. (A local file would just load in the app.)
 const REMINDER_URL = "https://fantasyfootball-af1.pages.dev/remind.ics";
 
-export function setupPage(leagueId, error) {
+export function setupPage(leagueId, error, yahoo = []) {
   return `<section class="card setup">
     <h2>Your ESPN league</h2>
     <p class="m">Find the league ID in your ESPN league's web address: <code>...leagueId=<b>1234567</b></code></p>
@@ -92,6 +112,12 @@ export function setupPage(leagueId, error) {
       <button class="primary" type="submit">Continue</button>
     </form>
     ${error ? `<p class="field-err">${esc(error)}</p>` : ""}
+  </section>
+  <section class="card setup">
+    <h2>Yahoo league</h2>
+    <p class="m">Yahoo doesn't let apps read leagues yet. Enter your roster once and the app uses ESPN's predictions.</p>
+    ${yahoo.map(y => `<button class="yahoo-open" data-id="${esc(y.id)}">Open ${esc(y.name)}</button>`).join("")}
+    <button id="yahoo-new">My league is on Yahoo — enter my roster</button>
   </section>`;
 }
 
@@ -122,6 +148,51 @@ export function pickTeamPage(teams) {
     <p class="m">Remembered on this device.</p>
     ${teams.map(t => `<button class="team" data-team="${t.id}">${esc(t.name)} <span class="m">${t.wins}-${t.losses}${t.ties ? "-" + t.ties : ""}</span></button>`).join("")}
   </section>`;
+}
+
+const SLOT_LABELS = { QB: "QB", WR: "WR", RB: "RB", TE: "TE", FLEX: "W/R/T", K: "K", DST: "DEF", BENCH: "Bench", IR: "IR" };
+
+export function manualSetupPage(cfg, error) {
+  const scoring = [["ppr", "PPR"], ["half", "Half PPR"], ["standard", "Standard"]];
+  return `<section class="card setup">
+    <h2>Your Yahoo league</h2>
+    <form id="manual-form">
+      <label class="m" for="manual-name">League name</label>
+      <input id="manual-name" autocomplete="off" placeholder="Sam's Yahoo league" value="${esc(cfg.name)}">
+      <p class="m">Scoring (in Yahoo: League, then Settings)</p>
+      <div class="choice">${scoring.map(([v, l]) =>
+        `<label><input type="radio" name="scoring" value="${v}"${cfg.scoring === v ? " checked" : ""}> ${l}</label>`).join("")}</div>
+      <p class="m">Roster spots (Yahoo's usual setup; change them to match yours)</p>
+      ${Object.entries(SLOT_LABELS).map(([s, l]) => `<div class="row"><span>${l}</span><span class="stepper">
+        <button type="button" data-slot="${s}" data-step="-1" aria-label="Fewer ${l}">−</button>
+        <b id="slot-${s}">${cfg.slots[s] || 0}</b>
+        <button type="button" data-slot="${s}" data-step="1" aria-label="More ${l}">+</button></span></div>`).join("")}
+      <button class="primary" type="submit">Next: add players</button>
+    </form>
+    ${error ? `<p class="field-err">${esc(error)}</p>` : ""}
+  </section>`;
+}
+
+export function rosterPage(cfg, limit, missingIds, storageOk) {
+  const n = cfg.roster.filter(r => !r.ir).length;
+  return `<section class="card setup">
+    <h2>${esc(cfg.name)}: your roster</h2>
+    ${storageOk ? "" : `<div class="err">This browser can't save your roster. It works until you close this tab.</div>`}
+    <input id="search" type="search" autocomplete="off" placeholder="Player name, like Jaxon">
+    <div id="results"></div>
+    <p class="m">${n} of ${limit} spots${n > limit ? ` · <b class="warn-text">${n - limit} over</b>` : ""} (IR not counted)</p>
+    ${cfg.roster.map(r => `<div class="row"><span>${esc(r.name)} <span class="m">${esc(r.pos)}</span>${missingIds.has(r.id) ? `<span class="pill warn">not in ESPN's list</span>` : ""}</span>
+      <span><button data-ir="${r.id}" aria-pressed="${r.ir}">${r.ir ? "In IR" : "IR"}</button>
+      <button data-remove="${r.id}" aria-label="Remove ${esc(r.name)}">×</button></span></div>`).join("")}
+    <button class="primary" id="roster-done">See this week</button>
+  </section>`;
+}
+
+export function searchResults(rows, query, abbrev) {
+  if (query.trim().length < 2) return "";
+  if (!rows.length) return `<div class="empty">Not found in ESPN's top 600.</div>`;
+  return rows.map(r => `<div class="row"><span>${esc(r.name)} <span class="m">${esc(r.pos)} · ${esc(abbrev(r.pro_team_id))}</span></span>
+    <button data-add="${r.player_id}">Add</button></div>`).join("");
 }
 
 // Plain-language rules behind each card. Numbers come from the code's constants (c) so the

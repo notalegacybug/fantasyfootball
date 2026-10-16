@@ -305,3 +305,35 @@ test("transfer UI: send button only in Yahoo mode; paste box on the start screen
   assert.match(box, /https:\/\/x\.dev\/#yahoo=abc/);
   assert.match(box, /id="copy-link"/);
 });
+
+// --- Transfer links are untrusted: anyone can send one ------------------------------------
+
+const linkOf = o => `#yahoo=${Buffer.from(JSON.stringify(o)).toString("base64url")}`;
+
+test("transfer link: rebuilt from checked fields only; anything else is refused", () => {
+  const good = manual.importLink(manual.exportLink(sampleConfig(), "https://x.dev"));
+  const base = { ...good, extra: "<script>" };
+  assert.ok(!("extra" in manual.importLink(linkOf(base))), "unknown fields are dropped");
+  const bad = [
+    { ...base, taken: ['1" onfocus=alert(1) x="'] },
+    { ...base, slots: { QB: "1<img src=x onerror=alert(1)>" } },
+    { ...base, slots: { "<b>": 1 } },
+    { ...base, slots: { QB: 99 } },
+    { ...base, takenNames: { abc: "x" } },
+    { ...base, takenNames: { 5: { evil: 1 } } },
+    { ...base, roster: [{ ...base.roster[0], pos: "<img>" }] },
+    { ...base, roster: [{ ...base.roster[0], eligible: ["QB", "<img>"] }] },
+    { ...base, roster: [{ ...base.roster[0], ir: "yes" }] },
+    { ...base, roster: [{ ...base.roster[0], pro_team_id: "1<b>" }] },
+    { ...base, name: "x".repeat(200) },
+  ];
+  for (const o of bad) assert.throws(() => manual.importLink(linkOf(o)), /got cut off/, JSON.stringify(o).slice(0, 80));
+});
+
+test("setup page and hidden list escape what they print", () => {
+  const cfg = sampleConfig();
+  cfg.slots.QB = '1"><img>';
+  assert.doesNotMatch(manualSetupPage(cfg), /<img>/);
+  const page = pageJson(build(sampleConfig()));
+  assert.doesNotMatch(weekPage(page, { edited: "today", hidden: [{ id: '1"><img>', name: "x" }] }), /<img>/);
+});

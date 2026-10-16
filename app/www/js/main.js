@@ -255,11 +255,13 @@ function yahooNew(error, draft, editing = false) {
   });
 }
 
-// A league from another device. Same name as one already here -> it's an update, so that one
-// is replaced rather than listed twice.
+// A league from another device. Same name as one already here -> offered as an update (it
+// replaces that one, Taken list included), and only if the user says yes.
 function addImported(cfg) {
   const ids = store.load("manualIds", []);
   let id = ids.find(i => store.load(manualKey(i))?.name === cfg.name);
+  if (id && !confirm(`Replace your saved "${cfg.name}" with the one in this link? `
+                     + "Its roster and Taken list will be the link's.")) return askLeague();
   if (!id) {
     id = Date.now().toString(36);
     store.save("manualIds", [...ids, id]);
@@ -459,8 +461,14 @@ if (isNative()) {
   // A transfer link tapped (laptop, Android browser): add it, then drop it from the address bar.
   const link = location.hash;
   history.replaceState(null, "", "/");
-  try { addImported(manual.importLink(link)); }
+  // A tapped link could come from anyone: say what it adds before saving anything.
+  let cfg = null;
+  try { cfg = manual.importLink(link); }
   catch (e) { askLeague(null, e.message); }
+  if (cfg) {
+    if (confirm(`Add the Yahoo league "${cfg.name}" (${cfg.roster.length} players) from this link?`)) addImported(cfg);
+    else askLeague();
+  }
 } else {
   openLeague(leagueFromPath(location.pathname));
 }

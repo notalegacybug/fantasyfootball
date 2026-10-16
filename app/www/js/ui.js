@@ -75,7 +75,7 @@ export function weekPage(d, manual = null) {
 
   if (manual && manual.hidden.length) {
     h += `<p class="m hidden-list">Hidden as taken: ${manual.hidden.map(x =>
-      `${esc(x.name)} <button data-untake="${x.id}">Show</button>`).join(" · ")}</p>`;
+      `${esc(x.name)} <button data-untake="${esc(x.id)}">Show</button>`).join(" · ")}</p>`;
   }
 
   h += card("Bye weeks ahead", d.bye_crunch.map(c =>
@@ -199,7 +199,7 @@ export function manualSetupPage(cfg, error, editing = false) {
       <p class="m">Roster spots (Yahoo's usual setup; change them to match yours)</p>
       ${Object.entries(SLOT_LABELS).map(([s, l]) => `<div class="row"><span>${l}</span><span class="stepper">
         <button type="button" data-slot="${s}" data-step="-1" aria-label="Fewer ${l}">−</button>
-        <b id="slot-${s}">${cfg.slots[s] || 0}</b>
+        <b id="slot-${s}">${esc(cfg.slots[s] || 0)}</b>
         <button type="button" data-slot="${s}" data-step="1" aria-label="More ${l}">+</button></span></div>`).join("")}
       <button class="primary" type="submit">${editing ? "Save" : "Next: add players"}</button>
       <button type="button" id="manual-cancel">Cancel</button>
@@ -218,8 +218,8 @@ export function rosterPage(cfg, limit, missingIds, storageOk) {
     <div id="results"></div>
     <p class="m">${n} of ${limit} spots${n > limit ? ` · <b class="warn-text">${n - limit} over</b>` : ""} (IR not counted)</p>
     ${cfg.roster.map(r => `<div class="row"><span>${esc(r.name)} <span class="m">${esc(r.pos)}</span>${missingIds.has(r.id) ? `<span class="pill warn">not in ESPN's list</span>` : ""}</span>
-      <span>${cfg.slots.IR || r.ir ? `<button data-ir="${r.id}" aria-pressed="${r.ir}">${r.ir ? "In IR" : "IR"}</button>` : ""}
-      <button data-remove="${r.id}" aria-label="Remove ${esc(r.name)}">×</button></span></div>`).join("")}
+      <span>${cfg.slots.IR || r.ir ? `<button data-ir="${esc(r.id)}" aria-pressed="${r.ir === true}">${r.ir ? "In IR" : "IR"}</button>` : ""}
+      <button data-remove="${esc(r.id)}" aria-label="Remove ${esc(r.name)}">×</button></span></div>`).join("")}
     <button class="primary" id="roster-done">See this week</button>
   </section>`;
 }

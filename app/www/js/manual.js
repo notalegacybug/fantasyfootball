@@ -148,10 +148,37 @@ export function importLink(text) {
   try { o = JSON.parse(new TextDecoder().decode(fromB64(m[1]))); }
   catch { throw new Error("That link got cut off. Copy the whole link again."); }
   if (o?.v > CONFIG_VERSION) throw new Error("That link is from a newer version. Reload the app, then paste again.");
-  const cfg = readConfig(o);
-  const ok = cfg && typeof cfg.name === "string" && SCORINGS.includes(cfg.scoring)
-    && cfg.slots && typeof cfg.slots === "object" && Array.isArray(cfg.taken)
-    && cfg.roster.every(e => Number.isInteger(e?.id) && typeof e.name === "string");
-  if (!ok) throw new Error("That link got cut off. Copy the whole link again.");
+  const cfg = cleanConfig(o);
+  if (!cfg) throw new Error("That link got cut off. Copy the whole link again.");
   return cfg;
+}
+
+// Anyone can send a link, so the league is rebuilt from checked fields only and anything
+// unexpected rejects the whole link -- nothing from it reaches the page or the math unchecked.
+const SLOTS = ["QB", "RB", "WR", "TE", "FLEX", "OP", "K", "DST", "BENCH", "IR"];
+const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DST"];
+const isId = n => Number.isInteger(n) && n > -1e6 && n < 1e10;
+const isText = (t, max) => typeof t === "string" && t.length <= max;
+const isObj = o => o !== null && typeof o === "object" && !Array.isArray(o);
+
+function cleanConfig(o) {
+  if (!isObj(o) || o.v !== CONFIG_VERSION || !isText(o.name, 80) || !SCORINGS.includes(o.scoring)) return null;
+  if (!isObj(o.slots) || !Object.entries(o.slots).every(([k, n]) => SLOTS.includes(k) && Number.isInteger(n) && n >= 0 && n <= 10)) return null;
+  if (!Array.isArray(o.roster) || o.roster.length > 60) return null;
+  const roster = [];
+  for (const e of o.roster) {
+    const ok = isObj(e) && isId(e.id) && isText(e.name, 80) && POSITIONS.includes(e.pos)
+      && Array.isArray(e.eligible) && e.eligible.every(x => SLOTS.includes(x))
+      && (e.pro_team_id == null || isId(e.pro_team_id)) && typeof e.ir === "boolean";
+    if (!ok) return null;
+    roster.push({ id: e.id, name: e.name, pos: e.pos, eligible: [...e.eligible],
+                  pro_team_id: e.pro_team_id ?? null, ir: e.ir });
+  }
+  const taken = o.taken ?? [];
+  if (!Array.isArray(taken) || taken.length > 600 || !taken.every(isId)) return null;
+  const names = o.takenNames ?? {};
+  if (!isObj(names) || !Object.entries(names).every(([k, v]) => isId(Number(k)) && /^-?\d+$/.test(k) && isText(v, 80))) return null;
+  return { v: CONFIG_VERSION, name: o.name, scoring: o.scoring, slots: { ...o.slots }, roster,
+           taken: [...taken], takenNames: { ...names },
+           editedAt: Number.isFinite(o.editedAt) ? o.editedAt : Date.now() };
 }

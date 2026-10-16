@@ -261,3 +261,47 @@ test("setup page: Cancel always; Save and Delete only when editing", () => {
   assert.match(edit, /Save/);
   assert.match(edit, /id="manual-delete"/);
 });
+
+// --- Moving a Yahoo league to another device ---------------------------------------------
+
+import { setupPage, transferBox } from "../www/js/ui.js";
+
+test("transfer link: round-trips the whole league, accents included", () => {
+  const cfg = sampleConfig();
+  cfg.name = "Sam's Núñez league";
+  cfg.roster[0].ir = true;
+  manual.markTaken(cfg, { player_id: 77, name: "José Taken" });
+  const link = manual.exportLink(cfg, "https://fantasyfootball-af1.pages.dev");
+  assert.match(link, /^https:\/\/fantasyfootball-af1\.pages\.dev\/#yahoo=[A-Za-z0-9_-]+$/,
+               "data after # (never sent to the server), URL-safe characters only");
+  const back = manual.importLink(link);
+  for (const k of ["name", "scoring", "slots", "roster", "taken", "takenNames"]) {
+    assert.deepEqual(back[k], cfg[k], k);
+  }
+  assert.equal(back.v, 1);
+});
+
+test("transfer link: found inside a pasted message; bad input gets a plain-language error", () => {
+  const link = manual.exportLink(sampleConfig(), "https://x.dev");
+  const msg = `here you go ${link} \nlove, mom`;
+  assert.equal(manual.importLink(msg).name, "Test league");
+  assert.throws(() => manual.importLink("hello"), /isn't a league link/);
+  assert.throws(() => manual.importLink("https://x.dev/#yahoo=@@@"), /got cut off/);
+  const v2 = Buffer.from(JSON.stringify({ v: 2, roster: [] })).toString("base64url");
+  assert.throws(() => manual.importLink(`#yahoo=${v2}`), /newer version/);
+  const junk = Buffer.from(JSON.stringify({ v: 1, name: "x", scoring: "ppr", slots: {},
+                                            roster: [{ id: "nope" }] })).toString("base64url");
+  assert.throws(() => manual.importLink(`#yahoo=${junk}`), /got cut off/);
+});
+
+test("transfer UI: send button only in Yahoo mode; paste box on the start screen", () => {
+  const page = pageJson(build(sampleConfig()));
+  assert.match(weekPage(page, { edited: "today", hidden: [] }), /id="send-league"/);
+  assert.doesNotMatch(weekPage(page), /send-league/);
+  const start = setupPage(null, null, [], "That link got cut off.");
+  assert.match(start, /id="import-form"/);
+  assert.match(start, /That link got cut off\./);
+  const box = transferBox("https://x.dev/#yahoo=abc");
+  assert.match(box, /https:\/\/x\.dev\/#yahoo=abc/);
+  assert.match(box, /id="copy-link"/);
+});

@@ -106,14 +106,31 @@ export function weekPage(d, manual = null) {
        Change the day or time in your calendar. It ends after the fantasy playoffs.</p>
     <a class="button" href="${REMINDER_URL}">Add to my calendar</a>
   </section>`;
+  if (manual) {
+    h += `<section class="card setup">
+    <h2>Use this league on another device</h2>
+    <p class="m">Makes a link with your roster in it. Send it to the other phone, and paste it there.</p>
+    <button id="send-league">Make a link</button>
+    <div id="transfer"></div>
+  </section>`;
+  }
   return h;
+}
+
+// The link, ready to copy. On iPhone the Home Screen app keeps its own data apart from
+// Safari, so the link is pasted inside the app rather than tapped.
+export function transferBox(link) {
+  return `<textarea id="transfer-link" readonly rows="3">${esc(link)}</textarea>
+    <button class="primary" id="copy-link">Copy link</button>
+    <p class="m">On the other phone: open the app, tap <b>League</b> if needed, and paste the link in
+       <b>Got a link from another device?</b> Tapping the link in a text opens Safari instead of the app.</p>`;
 }
 
 // Absolute on purpose: inside the Android app, a link to another site opens in the phone's
 // browser, which hands the .ics file to the calendar app. (A local file would just load in the app.)
 const REMINDER_URL = "https://fantasyfootball-af1.pages.dev/remind.ics";
 
-export function setupPage(leagueId, error, yahoo = []) {
+export function setupPage(leagueId, error, yahoo = [], importError = null) {
   return `<section class="card setup">
     <h2>Your ESPN league</h2>
     <p class="m">Find the league ID in your ESPN league's web address: <code>...leagueId=<b>1234567</b></code></p>
@@ -128,6 +145,12 @@ export function setupPage(leagueId, error, yahoo = []) {
     <p class="m">Yahoo doesn't let apps read leagues yet. Enter your roster once and the app uses ESPN's predictions.</p>
     ${yahoo.map(y => `<button class="yahoo-open" data-id="${esc(y.id)}">Open ${esc(y.name)}</button>`).join("")}
     <button id="yahoo-new">My league is on Yahoo — enter my roster</button>
+    <form id="import-form">
+      <label class="m" for="import-link">Got a link from another device? Paste it here.</label>
+      <input id="import-link" autocomplete="off" placeholder="https://...#yahoo=...">
+      <button type="submit">Add league</button>
+    </form>
+    ${importError ? `<p class="field-err">${esc(importError)}</p>` : ""}
   </section>`;
 }
 

@@ -10,6 +10,7 @@ export const CONFIG_VERSION = 1;   // saved on users' phones: bump only with a m
 // Yahoo's standard roster. W/R/T is the app's FLEX, DEF is DST.
 export const YAHOO_DEFAULT_SLOTS = { QB: 1, WR: 3, RB: 2, TE: 1, FLEX: 1, K: 1, DST: 1, BENCH: 6, IR: 1 };
 export const SCORING_DEFAULTS = { ppr: 3, standard: 1 };   // ESPN leaguedefaults id per scoring
+const SCORINGS = ["ppr", "half", "standard"];
 
 export function newConfig(name, scoring, slots) {
   return { v: CONFIG_VERSION, name, scoring, slots: { ...slots }, roster: [], taken: [],
@@ -123,4 +124,34 @@ export function buildManualState(cfg, pool, pro, { season, week, nowMs = Date.no
                points_for: 0, points_against: 0, roster: players };
   return new SeasonState({ season, week, slots: cfg.slots, teams: [me], schedule: [], pro,
                            freeAgents, myTeamId: MY_TEAM });
+}
+
+// Moving a league to another device. There's no server, so the whole config rides in the
+// link, after "#": browsers never send that part to the website. iPhone Home Screen apps
+// have their own storage, apart from Safari, so the link is pasted in the app, not tapped.
+const B64 = /#yahoo=([A-Za-z0-9_-]*)/;
+const toB64 = bytes => btoa(String.fromCharCode(...bytes))
+  .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const fromB64 = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+
+export function exportLink(cfg, origin) {
+  const { v, name, scoring, slots, roster, taken, takenNames, editedAt } = cfg;
+  const json = JSON.stringify({ v, name, scoring, slots, roster, taken, takenNames, editedAt });
+  return `${origin}/#yahoo=${toB64(new TextEncoder().encode(json))}`;
+}
+
+// The config from a link, or anything containing one (a pasted text message).
+export function importLink(text) {
+  const m = B64.exec(String(text || ""));
+  if (!m) throw new Error("That isn't a league link. Copy the whole link from the message.");
+  let o;
+  try { o = JSON.parse(new TextDecoder().decode(fromB64(m[1]))); }
+  catch { throw new Error("That link got cut off. Copy the whole link again."); }
+  if (o?.v > CONFIG_VERSION) throw new Error("That link is from a newer version. Reload the app, then paste again.");
+  const cfg = readConfig(o);
+  const ok = cfg && typeof cfg.name === "string" && SCORINGS.includes(cfg.scoring)
+    && cfg.slots && typeof cfg.slots === "object" && Array.isArray(cfg.taken)
+    && cfg.roster.every(e => Number.isInteger(e?.id) && typeof e.name === "string");
+  if (!ok) throw new Error("That link got cut off. Copy the whole link again.");
+  return cfg;
 }

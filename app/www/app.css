@@ -56,7 +56,7 @@ button:disabled { opacity: .5; }
 .setup .button, .setup button { margin: 4px 8px 4px 0; }
 .setup code { font-size: 12px; }
 #league-form { display: flex; gap: 8px; flex-wrap: wrap; }
-#league-id { font: inherit; font-size: 16px; flex: 1 1 160px; min-width: 0; padding: 8px 10px;
+#league-id, #import-link, #transfer-link { font: inherit; font-size: 16px; flex: 1 1 160px; min-width: 0; padding: 8px 10px;
              border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); }
 .field-err { color: var(--danger); font-size: 13px; }
 button.team { display: flex; justify-content: space-between; width: 100%; margin: 6px 0 !important;
@@ -68,5 +68,8 @@ button.team { display: flex; justify-content: space-between; width: 100%; margin
 .stepper b { min-width: 1.5em; text-align: center; }
 .warn-text { color: var(--warn); }
 button.taken { margin-left: 6px; }
+#import-form { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+#import-form label { flex-basis: 100%; }
+#transfer-link { width: 100%; box-sizing: border-box; word-break: break-all; }
 button.danger { color: var(--danger); border-color: var(--danger); margin-top: 16px !important; }
 .hidden-list button { margin-left: 4px; }

@@ -16,6 +16,8 @@ import * as store from "./store.js";
 import * as ui from "./ui.js";
 
 const APK_URL = "https://github.com/notalegacybug/fantasyfootball/releases/latest/download/roster-optimizer.apk";
+// Transfer links always point at the website: inside the Android app the origin is localhost.
+const SITE = "https://fantasyfootball-af1.pages.dev";
 const HOUR = 3600e3;
 
 const $ = s => document.querySelector(s);
@@ -130,14 +132,19 @@ function header(bare = false) {
   });
 }
 
-function askLeague(error) {
+function askLeague(error, importError) {
   screenGen++;
   history.replaceState(null, "", "/");
   const yahoo = store.load("manualIds", [])
     .map(id => ({ id, name: store.load(manualKey(id))?.name })).filter(y => y.name);
-  show(ui.setupPage(settings.leagueId, error, yahoo));
+  show(ui.setupPage(settings.leagueId, error, yahoo, importError));
   header();
   $("#yahoo-new").addEventListener("click", () => yahooNew());
+  $("#import-form").addEventListener("submit", e => {
+    e.preventDefault();
+    try { addImported(manual.importLink($("#import-link").value)); }
+    catch (err) { askLeague(null, err.message); }
+  });
   for (const b of document.querySelectorAll("button.yahoo-open")) {
     b.addEventListener("click", () => {
       settings = { source: "manual", manualId: b.dataset.id };
@@ -248,6 +255,23 @@ function yahooNew(error, draft, editing = false) {
   });
 }
 
+// A league from another device. Same name as one already here -> it's an update, so that one
+// is replaced rather than listed twice.
+function addImported(cfg) {
+  const ids = store.load("manualIds", []);
+  let id = ids.find(i => store.load(manualKey(i))?.name === cfg.name);
+  if (!id) {
+    id = Date.now().toString(36);
+    store.save("manualIds", [...ids, id]);
+  }
+  settings = { source: "manual", manualId: id };
+  store.save("settings", settings);
+  manualCfg = cfg;
+  manualData = null;
+  saveManual();
+  start();
+}
+
 async function rosterScreen() {
   const gen = ++screenGen;
   header();
@@ -307,6 +331,15 @@ function showManualWeek() {
   $("#age").textContent = `ESPN predictions, week ${week}`;
   $("#edit-roster").addEventListener("click", () => rosterScreen());
   $("#league-settings").addEventListener("click", () => yahooNew(null, null, true));
+  $("#send-league").addEventListener("click", () => {
+    const link = manual.exportLink(manualCfg, SITE);
+    $("#transfer").innerHTML = ui.transferBox(link);
+    const box = $("#transfer-link");
+    $("#copy-link").addEventListener("click", async e => {
+      try { await navigator.clipboard.writeText(link); e.target.textContent = "Copied"; }
+      catch { box.select(); e.target.textContent = "Selected: copy it"; }
+    });
+  });
   for (const b of document.querySelectorAll("button[data-taken]")) {
     b.addEventListener("click", () => {
       const id = Number(b.dataset.taken);
@@ -422,6 +455,12 @@ if (isNative()) {
     const launch = await App.getLaunchUrl().catch(() => null);
     openLeague(fromAppUrl(launch?.url));
   }).catch(e => show(ui.errorBox(`App failed to start: ${e.message}`)));
+} else if (location.hash.startsWith("#yahoo=")) {
+  // A transfer link tapped (laptop, Android browser): add it, then drop it from the address bar.
+  const link = location.hash;
+  history.replaceState(null, "", "/");
+  try { addImported(manual.importLink(link)); }
+  catch (e) { askLeague(null, e.message); }
 } else {
   openLeague(leagueFromPath(location.pathname));
 }

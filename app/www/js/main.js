@@ -106,12 +106,14 @@ const editedText = at => {
 // Screens
 // ---------------------------------------------------------------------------
 
-function header() {
+// bare: a form with its own Cancel, so no Refresh/League buttons that would leave it.
+function header(bare = false) {
   const signedIn = isNative() && cookies;
+  const league = !bare && (settings.leagueId || isManual());
   $("#nav-right").innerHTML = [
     `<span id="age"></span>`,
-    (settings.leagueId || isManual()) ? `<button id="refresh">Refresh</button>` : "",
-    (settings.leagueId || isManual()) ? `<button id="switch">League</button>` : "",
+    league ? `<button id="refresh">Refresh</button>` : "",
+    league ? `<button id="switch">League</button>` : "",
     signedIn ? `<button id="signout">Sign out</button>` : "",
     `<button id="how" aria-label="How it works" title="How it works">?</button>`,
   ].join("");
@@ -198,10 +200,13 @@ function pickTeam(teams) {
   }
 }
 
-function yahooNew(error, draft) {
+// First setup, or (editing) changing the open league's name, scoring or spots.
+function yahooNew(error, draft, editing = false) {
   screenGen++;
-  const cfg = draft ?? manual.newConfig("", "ppr", manual.YAHOO_DEFAULT_SLOTS);
-  show(ui.manualSetupPage(cfg, error));
+  const cfg = draft ?? (editing ? structuredClone(manualCfg)
+                                : manual.newConfig("", "ppr", manual.YAHOO_DEFAULT_SLOTS));
+  show(ui.manualSetupPage(cfg, error, editing));
+  header(true);
   for (const b of document.querySelectorAll("button[data-slot]")) {
     b.addEventListener("click", () => {
       const s = b.dataset.slot;
@@ -209,17 +214,34 @@ function yahooNew(error, draft) {
       $(`#slot-${s}`).textContent = cfg.slots[s];
     });
   }
+  $("#manual-cancel").addEventListener("click", () => (editing ? start() : askLeague()));
+  $("#manual-delete")?.addEventListener("click", () => {
+    if (!confirm(`Delete ${manualCfg.name} from this phone? Its roster will be gone.`)) return;
+    store.remove(manualKey(settings.manualId));
+    store.save("manualIds", store.load("manualIds", []).filter(id => id !== settings.manualId));
+    settings = {};
+    store.save("settings", settings);
+    manualCfg = null;
+    manualData = null;
+    askLeague();
+  });
   $("#manual-form").addEventListener("submit", e => {
     e.preventDefault();
     cfg.name = $("#manual-name").value.trim();
     cfg.scoring = document.querySelector("input[name=scoring]:checked")?.value || "ppr";
-    if (!cfg.name) return yahooNew("Give the league a name, so you can tell it apart later.", cfg);
-    cfg.slots = Object.fromEntries(Object.entries(cfg.slots).filter(([, n]) => n > 0));
+    if (!cfg.name) return yahooNew("Give the league a name, so you can tell it apart later.", cfg, editing);
+    const saved = manual.applySettings(cfg, cfg);
+    if (editing) {
+      if (saved.scoring !== manualCfg.scoring) manualData = null;   // other predictions
+      manualCfg = saved;
+      saveManual();
+      return start();
+    }
     const id = Date.now().toString(36);
     store.save("manualIds", [...store.load("manualIds", []), id]);
     settings = { source: "manual", manualId: id };
     store.save("settings", settings);
-    manualCfg = cfg;
+    manualCfg = saved;
     manualData = null;
     saveManual();
     rosterScreen();
@@ -231,9 +253,12 @@ async function rosterScreen() {
   header();
   if (!manualData) {
     show(ui.loadingPage("Loading ESPN's player list..."));
-    try { manualData = await loadManualData(manualCfg, false); }
+    // Assigned only if still current: a late load for another Yahoo league must not stick.
+    let data;
+    try { data = await loadManualData(manualCfg, false); }
     catch (e) { if (gen === screenGen) show(ui.errorBox(`Couldn't reach ESPN: ${e.message}`)); return; }
     if (gen !== screenGen) return;
+    manualData = data;
   }
   const { rows, pro } = manualData;
   const inPool = new Set(rows.map(r => r.player_id));
@@ -277,21 +302,22 @@ async function rosterScreen() {
 function showManualWeek() {
   const { season, week, rows, pro } = manualData;
   const st = manual.buildManualState(manualCfg, rows, pro, { season, week, nowMs: Date.now() });
-  const name = new Map(rows.map(r => [r.player_id, r.name]));
-  const hidden = manualCfg.taken.map(id => ({ id, name: name.get(id) || "Unknown player" }));
+  const hidden = manual.hiddenPlayers(manualCfg, rows);
   show(ui.weekPage(pageJson(st), { edited: editedText(manualCfg.editedAt), hidden }));
   $("#age").textContent = `ESPN predictions, week ${week}`;
   $("#edit-roster").addEventListener("click", () => rosterScreen());
+  $("#league-settings").addEventListener("click", () => yahooNew(null, null, true));
   for (const b of document.querySelectorAll("button[data-taken]")) {
     b.addEventListener("click", () => {
-      manualCfg.taken.push(Number(b.dataset.taken));
+      const id = Number(b.dataset.taken);
+      manual.markTaken(manualCfg, rows.find(r => r.player_id === id) ?? { player_id: id, name: "" });
       saveManual();
       showManualWeek();
     });
   }
   for (const b of document.querySelectorAll("button[data-untake]")) {
     b.addEventListener("click", () => {
-      manualCfg.taken = manualCfg.taken.filter(id => id !== Number(b.dataset.untake));
+      manual.unmarkTaken(manualCfg, Number(b.dataset.untake));
       saveManual();
       showManualWeek();
     });

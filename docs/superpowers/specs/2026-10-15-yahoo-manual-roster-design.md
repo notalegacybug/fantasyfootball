@@ -92,10 +92,13 @@ Key `manual.<localId>`:
 ```
 
 `v` is there from day one: this format lives on the kids' phones, so changing it later
-needs a migration — the one expensive-to-reverse choice here. Player pool cached with
-`saveFresh` under `pool.<season>.<week>.<scoring>`, 12 h TTL (week in the key → new week
-refetches by itself). `settings` gains `{source: "manual", manualId}` beside the ESPN
-`{leagueId, teamId}`.
+needs a migration — the one expensive-to-reverse choice here. Optional fields may be
+added without a bump when old configs load fine without them: `takenNames` (`{id: name}`,
+so the hidden list can name a player who left ESPN's list) defaults to `{}`. Player pool
+cached with `saveFresh` under `pool.<scoring>` (one key per scoring, overwritten weekly —
+a key per week would fill localStorage), value `{season, week, rows}`, 12 h TTL; a value
+whose season/week isn't the current one is refetched. `settings` gains
+`{source: "manual", manualId}` beside the ESPN `{leagueId, teamId}`.
 
 ### 4.4 Slot names
 

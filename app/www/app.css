@@ -68,4 +68,5 @@ button.team { display: flex; justify-content: space-between; width: 100%; margin
 .stepper b { min-width: 1.5em; text-align: center; }
 .warn-text { color: var(--warn); }
 button.taken { margin-left: 6px; }
+button.danger { color: var(--danger); border-color: var(--danger); margin-top: 16px !important; }
 .hidden-list button { margin-left: 4px; }

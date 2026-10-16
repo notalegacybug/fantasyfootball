@@ -25,13 +25,18 @@ const row = (left, right) => `<div class="row"><span>${left}</span><span class="
 // Yahoo-by-hand doesn't know waivers vs free agent, so no pill there.
 const status = (p, manual) => (manual ? "" : `<span class="pill ${p.status === "WAIVERS" ? "warn" : "ok"}">${p.status === "WAIVERS" ? "waivers" : "free agent"}</span>`);
 const taken = (p, manual) => (manual ? ` <button class="taken" data-taken="${p.id}">Taken</button>` : "");
+// season.js words its IR advice for ESPN; the rules are the same in Yahoo, only the name differs.
+const site = (text, manual) => (manual ? text.replace("ESPN can block", "Yahoo can block") : text);
+// ESPN's owned % is ESPN players' ownership, not this Yahoo league's, so Yahoo mode leaves it out.
+const owned = (p, manual) => (manual ? "" : ` · owned ${p.owned_change > 0 ? "+" : ""}${pts(p.owned_change)}% this week`);
 
 // manual: null for ESPN leagues; for Yahoo-by-hand {edited: "3 days ago", hidden: [{id, name}]}.
 export function weekPage(d, manual = null) {
   const gain = d.optimal_total - d.current_total;
   let h = "";
   if (manual) {
-    h += `<div class="row"><span class="m">Roster edited ${esc(manual.edited)}</span><button id="edit-roster">Edit roster</button></div>
+    h += `<div class="row"><span class="m">Roster edited ${esc(manual.edited)}</span><span><button id="edit-roster">Edit roster</button>
+      <button id="league-settings">League settings</button></span></div>
     <div class="stats">
       <div class="stat"><div class="l">Week ${d.week} · ${esc(d.me.name)}</div><div class="v">${pts(d.optimal_total)}</div></div>
     </div>`;
@@ -48,11 +53,11 @@ export function weekPage(d, manual = null) {
   const starterIds = new Set(d.starters.map(p => p.id));
   const noBackup = p => (manual && starterIds.has(p.id)
     ? `<br><span class="m">No one else on your roster can play here. See Pickups.</span>` : "");
-  h += card("Fix first", d.problems.map(x => row(`${who(x.player)}${noBackup(x.player)}`, esc(x.message))),
+  h += card("Fix first", d.problems.map(x => row(`${who(x.player)}${noBackup(x.player)}`, esc(site(x.message, manual)))),
     `<span class="good">All clear.</span>`, d.problems.length ? "danger" : "");
 
   h += card("IR moves", d.ir_moves.map(m =>
-    row(who(m.player), `${m.from.toLowerCase()} &rarr; ${m.to.toLowerCase()} · ${esc(m.reason)}`)),
+    row(who(m.player), `${m.from.toLowerCase()} &rarr; ${m.to.toLowerCase()} · ${esc(site(m.reason, manual))}`)),
     "Nothing to move.");
 
   if (!manual) {
@@ -64,7 +69,7 @@ export function weekPage(d, manual = null) {
 
   h += card("Pickups", d.pickups.map(w =>
     row(`${who(w.add)} ${status(w.add, manual)}${taken(w.add, manual)}<br>
-         <span class="m">${game(w.add)} · proj ${pts(w.add.proj)} · owned ${w.add.owned_change > 0 ? "+" : ""}${pts(w.add.owned_change)}% this week</span>`,
+         <span class="m">${game(w.add)} · proj ${pts(w.add.proj)}${owned(w.add, manual)}</span>`,
         `+${pts(w.gain)} this week · ${w.drop ? "drop " + esc(w.drop.name) : "no drop needed"}<br>rest of season ${w.ros_delta >= 0 ? "+" : ""}${pts(w.ros_delta)}`)),
     "No free agent would crack your lineup this week.");
 
@@ -157,7 +162,8 @@ export function pickTeamPage(teams) {
 
 const SLOT_LABELS = { QB: "QB", WR: "WR", RB: "RB", TE: "TE", FLEX: "W/R/T", K: "K", DST: "DEF", BENCH: "Bench", IR: "IR" };
 
-export function manualSetupPage(cfg, error) {
+// editing: true when changing a saved league (Save + Delete), false on first setup.
+export function manualSetupPage(cfg, error, editing = false) {
   const scoring = [["ppr", "PPR"], ["half", "Half PPR"], ["standard", "Standard"]];
   return `<section class="card setup">
     <h2>Your Yahoo league</h2>
@@ -172,9 +178,11 @@ export function manualSetupPage(cfg, error) {
         <button type="button" data-slot="${s}" data-step="-1" aria-label="Fewer ${l}">−</button>
         <b id="slot-${s}">${cfg.slots[s] || 0}</b>
         <button type="button" data-slot="${s}" data-step="1" aria-label="More ${l}">+</button></span></div>`).join("")}
-      <button class="primary" type="submit">Next: add players</button>
+      <button class="primary" type="submit">${editing ? "Save" : "Next: add players"}</button>
+      <button type="button" id="manual-cancel">Cancel</button>
     </form>
     ${error ? `<p class="field-err">${esc(error)}</p>` : ""}
+    ${editing ? `<button type="button" id="manual-delete" class="danger">Delete this league from this phone</button>` : ""}
   </section>`;
 }
 
@@ -187,7 +195,7 @@ export function rosterPage(cfg, limit, missingIds, storageOk) {
     <div id="results"></div>
     <p class="m">${n} of ${limit} spots${n > limit ? ` · <b class="warn-text">${n - limit} over</b>` : ""} (IR not counted)</p>
     ${cfg.roster.map(r => `<div class="row"><span>${esc(r.name)} <span class="m">${esc(r.pos)}</span>${missingIds.has(r.id) ? `<span class="pill warn">not in ESPN's list</span>` : ""}</span>
-      <span><button data-ir="${r.id}" aria-pressed="${r.ir}">${r.ir ? "In IR" : "IR"}</button>
+      <span>${cfg.slots.IR || r.ir ? `<button data-ir="${r.id}" aria-pressed="${r.ir}">${r.ir ? "In IR" : "IR"}</button>` : ""}
       <button data-remove="${r.id}" aria-label="Remove ${esc(r.name)}">×</button></span></div>`).join("")}
     <button class="primary" id="roster-done">See this week</button>
   </section>`;

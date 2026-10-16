@@ -184,3 +184,80 @@ test("week page, Yahoo mode: a 'fix first' starter is explained as having no bac
                "only the problem player who is still in the best lineup gets the note");
   assert.doesNotMatch(weekPage(page), /No one else on your roster/, "ESPN mode unchanged");
 });
+
+// --- Polish after the first iPhone try ----------------------------------------------------
+
+import { rosterPage, manualSetupPage } from "../www/js/ui.js";
+
+test("settings: changing scoring/name/slots keeps the roster and taken list", () => {
+  const cfg = sampleConfig();
+  cfg.taken = [42];
+  const out = manual.applySettings(cfg, { name: " Half league ", scoring: "half",
+                                          slots: { ...cfg.slots, BENCH: 7, IR: 0 } });
+  assert.equal(out.v, 1, "saved shape unchanged");
+  assert.equal(out.name, "Half league");
+  assert.equal(out.scoring, "half");
+  assert.equal(out.slots.BENCH, 7);
+  assert.ok(!("IR" in out.slots), "empty slot types are dropped, as on first setup");
+  assert.deepEqual(out.roster, cfg.roster);
+  assert.deepEqual(out.taken, [42]);
+  assert.ok(out.editedAt >= cfg.editedAt);
+});
+
+test("taken: the name is saved with the id, and old configs without names still load", () => {
+  const cfg = manual.readConfig({ ...manual.newConfig("L", "ppr", {}), takenNames: undefined });
+  manual.markTaken(cfg, { player_id: 9, name: "Gone Guy" });
+  manual.markTaken(cfg, { player_id: 9, name: "Gone Guy" });
+  assert.deepEqual(cfg.taken, [9], "no duplicates");
+  // Not in this week's pool any more: the saved name is used, never "Unknown player".
+  assert.deepEqual(manual.hiddenPlayers(cfg, []), [{ id: 9, name: "Gone Guy" }]);
+  manual.unmarkTaken(cfg, 9);
+  assert.deepEqual([cfg.taken, cfg.takenNames], [[], {}]);
+  const old = manual.readConfig({ v: 1, name: "L", scoring: "ppr", slots: {}, roster: [], taken: [7] });
+  assert.deepEqual(manual.hiddenPlayers(old, [{ player_id: 7, name: "Pool Name" }]), [{ id: 7, name: "Pool Name" }]);
+});
+
+test("search: 'St.Brown' and 'stbrown' find Amon-Ra St. Brown", () => {
+  const rows = [{ player_id: 3, name: "Amon-Ra St. Brown" }];
+  for (const q of ["St.Brown", "stbrown", "amonra"]) {
+    assert.deepEqual(manual.searchPool(rows, q).map(r => r.player_id), [3], q);
+  }
+});
+
+test("week page, Yahoo mode: IR wording says Yahoo, no owned-% figure, settings button", () => {
+  const page = pageJson(build(sampleConfig()));
+  const p = page.starters[0];
+  page.problems = [{ player: p, kind: "ir", message: "healthy but in IR -- ESPN can block adds until he moves" }];
+  page.ir_moves = [{ player: p, from: "IR", to: "BENCH", reason: "healthy -- ESPN can block adds while he's in IR" }];
+  page.pickups = [{ add: { ...p, owned_change: 3 }, gain: 1, drop: null, ros_delta: 1 }];
+  const html = weekPage(page, { edited: "today", hidden: [] });
+  assert.doesNotMatch(html, /ESPN can block/);
+  assert.match(html, /Yahoo can block adds until he moves/);
+  assert.match(html, /Yahoo can block adds while he's in IR/);
+  assert.doesNotMatch(html, /owned/);
+  assert.match(html, /id="league-settings"/);
+  const espnHtml = weekPage(page);
+  assert.match(espnHtml, /ESPN can block/, "ESPN mode unchanged");
+  assert.match(espnHtml, /owned \+3\.0% this week/);
+});
+
+test("roster page: no IR button when the league has no IR spots, unless he's already in IR", () => {
+  const cfg = sampleConfig();
+  assert.match(rosterPage(cfg, 15, new Set(), true), /data-ir=/);
+  delete cfg.slots.IR;
+  assert.doesNotMatch(rosterPage(cfg, 15, new Set(), true), /data-ir=/);
+  cfg.roster[0].ir = true;
+  assert.equal((rosterPage(cfg, 15, new Set(), true).match(/data-ir=/g) || []).length, 1,
+               "a player left in IR can still be taken out");
+});
+
+test("setup page: Cancel always; Save and Delete only when editing", () => {
+  const cfg = sampleConfig();
+  const fresh = manualSetupPage(cfg, null, false);
+  assert.match(fresh, /id="manual-cancel"/);
+  assert.match(fresh, /Next: add players/);
+  assert.doesNotMatch(fresh, /id="manual-delete"/);
+  const edit = manualSetupPage(cfg, null, true);
+  assert.match(edit, /Save/);
+  assert.match(edit, /id="manual-delete"/);
+});

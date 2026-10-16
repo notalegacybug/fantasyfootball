@@ -13,13 +13,36 @@ export const SCORING_DEFAULTS = { ppr: 3, standard: 1 };   // ESPN leaguedefault
 
 export function newConfig(name, scoring, slots) {
   return { v: CONFIG_VERSION, name, scoring, slots: { ...slots }, roster: [], taken: [],
-           editedAt: Date.now() };
+           takenNames: {}, editedAt: Date.now() };
 }
 
 // A saved config, or null if it isn't one this version understands.
 export function readConfig(o) {
   if (!o || o.v !== CONFIG_VERSION || !Array.isArray(o.roster)) return null;
-  return { taken: [], ...o };
+  return { taken: [], ...o, takenNames: { ...o.takenNames } };
+}
+
+// Name, scoring and roster spots changed after setup; the roster and Taken list are kept
+// (player ids are the same in ESPN's PPR, half and standard lists).
+export function applySettings(cfg, { name, scoring, slots }) {
+  return { ...cfg, name: name.trim(), scoring,
+           slots: Object.fromEntries(Object.entries(slots).filter(([, n]) => n > 0)),
+           editedAt: Date.now() };
+}
+
+// takenNames is optional (added after v1 shipped; older configs have none), so the hidden
+// list can still name a player who has dropped out of ESPN's list.
+export function markTaken(cfg, row) {
+  if (!cfg.taken.includes(row.player_id)) cfg.taken.push(row.player_id);
+  cfg.takenNames[row.player_id] = row.name;
+}
+export function unmarkTaken(cfg, id) {
+  cfg.taken = cfg.taken.filter(t => t !== id);
+  delete cfg.takenNames[id];
+}
+export function hiddenPlayers(cfg, rows) {
+  const pool = new Map(rows.map(r => [r.player_id, r.name]));
+  return cfg.taken.map(id => ({ id, name: cfg.takenNames[id] || pool.get(id) || "Unknown player" }));
 }
 
 // What's saved per player: enough to show and place him even after he drops out of ESPN's
@@ -52,9 +75,10 @@ export async function poolFor(fetchRows, scoring) {
 }
 
 // "smith njigba" finds Smith-Njigba, "jamarr" finds Ja'Marr, "nunez" finds Núñez. iPhones type
-// curly apostrophes by default, so those are dropped like straight ones.
+// curly apostrophes by default, so those are dropped like straight ones. Spaces are ignored
+// too, so "St.Brown" finds "St. Brown".
 const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-  .replace(/['\u2018\u2019.]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  .replace(/['\u2018\u2019.]/g, "").replace(/[^a-z0-9]+/g, "");
 
 export function searchPool(rows, query, excludeIds = new Set(), n = 8) {
   const q = norm(query);

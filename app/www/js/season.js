@@ -139,6 +139,22 @@ export function closeCalls(players, lineup, margin = CLOSE_CALL_MARGIN) {
   return out;
 }
 
+// A QUESTIONABLE starter usually plays, so he keeps his spot. Per such starter whose game
+// hasn't started: who the best lineup brings in if he's ruled out, or null if no one can.
+// Re-solving (not "best bench player at his spot") catches reshuffles, e.g. a WR out moves
+// the FLEX WR over and a bench RB takes FLEX. Map player_id -> backup | null.
+export function ifRuledOut(players, slots, lineup) {
+  const inLineup = new Set(lineup.map(([, p]) => p.player_id));
+  const out = new Map();
+  for (const [, q] of lineup) {
+    if (q.injury !== "QUESTIONABLE" || q.locked) continue;
+    const without = bestLineup(players.map(p => (p === q ? { ...q, injury: "OUT" } : p)), slots);
+    const added = without.map(([, p]) => p).find(p => !inLineup.has(p.player_id) && weekPts(p) > 0);
+    out.set(q.player_id, added ?? null);
+  }
+  return out;
+}
+
 // --------------------------------------------------------------------------
 // Roster health
 // --------------------------------------------------------------------------
@@ -295,12 +311,14 @@ export function weeklyReport(state) {
   const afterIr = applyIrMoves(roster, irm);
   const lu = bestLineup(afterIr, state.slots);
   const opp = state.opponent();
+  const backups = ifRuledOut(afterIr, state.slots, lu);
   return {
     week: state.week, me: state.me, opponent: opp,
     current_total: currentTotal(roster),
     optimal_total: lineupTotal(lu),
     opponent_total: opp ? currentTotal(opp.roster) : null,
-    problems: problems(roster, lu),
+    problems: problems(roster, lu).map(x => (backups.has(x.player.player_id)
+      ? { ...x, backup: backups.get(x.player.player_id) } : x)),
     ir_moves: irm,
     deltas: lineupDeltas(afterIr, lu),
     close_calls: closeCalls(afterIr, lu),

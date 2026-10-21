@@ -25,7 +25,9 @@ export function pageJson(st) {
     current_total: round1(r.current_total),
     optimal_total: round1(r.optimal_total),
     opponent_total: r.opponent_total === null ? null : round1(r.opponent_total),
-    problems: r.problems.map(x => ({ player: pj(x.player), kind: x.kind, message: x.message })),
+    // backup: only on QUESTIONABLE starters (null = no one can fill in); absent otherwise.
+    problems: r.problems.map(x => ({ player: pj(x.player), kind: x.kind, message: x.message,
+                                     ...("backup" in x && { backup: x.backup && pj(x.backup) }) })),
     ir_moves: r.ir_moves.map(m => ({ player: pj(m.player), from: m.from, to: m.to, reason: m.reason })),
     deltas: r.deltas.map(d => ({ slot: d.slot, out: pj(d.out), in: pj(d.in), gain: round1(d.gain) })),
     close_calls: r.close_calls.map(c => ({ slot: c.slot, starter: pj(c.starter), alt: pj(c.alt),

@@ -53,7 +53,16 @@ export function weekPage(d, manual = null) {
   const starterIds = new Set(d.starters.map(p => p.id));
   const noBackup = p => (manual && starterIds.has(p.id)
     ? `<br><span class="m">No one else on your roster can play here. See Pickups.</span>` : "");
-  h += card("Fix first", d.problems.map(x => row(`${who(x.player)}${noBackup(x.player)}`, esc(site(x.message, manual)))),
+  // Questionable starters keep their spot (most play); say who goes in if he's ruled out.
+  const ifOut = x => {
+    if (!x.backup) return `<br><span class="m">No one on your bench can fill in. See Pickups.</span>`;
+    const b = x.backup, first = b.game && x.player.game && b.game.kickoff_ms < x.player.game.kickoff_ms;
+    return `<br><span class="m">If he's ruled out, start ${esc(b.name)} (${pts(b.proj)}). ` +
+      (first ? `${esc(b.name)} plays first, so decide by then.`
+             : `Inactives come out about 90 minutes before kickoff.`) + `</span>`;
+  };
+  h += card("Fix first", d.problems.map(x =>
+    row(`${who(x.player)}${"backup" in x ? ifOut(x) : noBackup(x.player)}`, esc(site(x.message, manual)))),
     `<span class="good">All clear.</span>`, d.problems.length ? "danger" : "");
 
   h += card("IR moves", d.ir_moves.map(m =>
@@ -242,7 +251,8 @@ export function howItWorksPage(c) {
        tries every legal lineup, and shows the one that scores the most. No secret formula: all numbers come from ESPN.</p>
     <p class="m">It reads your league, your roster, injuries, game times, and the top ${c.freeAgents} free agents.</p>
     ${item("Fix first", `Starters who are on bye, injured, or predicted under ${c.low} points. Also a healthy player
-      sitting in IR, because ESPN can block your pickups while he's there.`)}
+      sitting in IR, because ESPN can block your pickups while he's there. A questionable starter keeps his
+      spot (most play), and it names who to start instead if he's ruled out.`)}
     ${item("IR moves", `Healthy players come out of IR first. Then injured (OUT or IR) players with almost no
       predicted points go into empty IR spots, which frees a bench spot.`)}
     ${item("Lineup changes", `Every legal lineup is tried (QB, RB, WR, TE, FLEX...). If yours is already the

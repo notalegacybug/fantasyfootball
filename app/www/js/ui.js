@@ -61,69 +61,78 @@ export function weekPage(d, manual = null) {
       (first ? `${esc(b.name)} plays first, so decide by then.`
              : `Inactives come out about 90 minutes before kickoff.`) + `</span>`;
   };
-  h += card("Fix first", d.problems.map(x =>
+  // Cards with nothing to do fold into one strip of green chips at the top, so the page
+  // is only as long as the work this week. On wide screens the rest flow into two columns.
+  const clear = [];
+  let body = "";
+  const add = (n, chip, html) => { if (n) body += html; else clear.push(chip); };
+  add(d.problems.length, "Fix first: all clear", card("Fix first", d.problems.map(x =>
     row(`${who(x.player)}${"backup" in x ? ifOut(x) : noBackup(x.player)}`, esc(site(x.message, manual)))),
-    `<span class="good">All clear.</span>`, d.problems.length ? "danger" : "");
+    `<span class="good">All clear.</span>`, "danger"));
 
-  h += card("IR moves", d.ir_moves.map(m =>
+  add(d.ir_moves.length, "IR: nothing to move", card("IR moves", d.ir_moves.map(m =>
     row(who(m.player), `${m.from.toLowerCase()} &rarr; ${m.to.toLowerCase()} · ${esc(site(m.reason, manual))}`)),
-    "Nothing to move.");
+    "Nothing to move."));
 
   if (!manual) {
-    h += card("Lineup changes", d.deltas.map(x =>
+    add(d.deltas.length, "Lineup: already the best", card("Lineup changes", d.deltas.map(x =>
       row(`Start ${who(x.in)}<br><span class="m">instead of ${esc(x.out.name)} (${pts(x.out.proj)})</span>`,
           `${esc(x.slot)} · ${pts(x.in.proj)} · <b class="good">+${pts(x.gain)}</b>`)),
-      `<span class="good">None. Your lineup is already the best one.</span>`);
+      `<span class="good">None. Your lineup is already the best one.</span>`));
   }
 
   // Right after the start/sit advice: these are start/sit decisions too, just too close to call.
-  h += card(`Close calls (under ${d.constants.close_call_margin} pts)`, d.close_calls.map(c =>
+  add(d.close_calls.length, "Close calls: none", card(`Close calls (under ${d.constants.close_call_margin} pts)`, d.close_calls.map(c =>
     row(`${esc(c.slot)} · ${esc(c.starter.name)} ${pts(c.starter.proj)} over ${esc(c.alt.name)} ${pts(c.alt.proj)}`,
         `<span class="pill warn">${pts(c.margin)} pts</span> started ${pts(c.starter.started_pct)}% / ${pts(c.alt.started_pct)}%`)),
-    "No start/sit decisions are close.", "warn");
+    "No start/sit decisions are close.", "warn"));
 
-  h += card("Pickups", d.pickups.map(w =>
+  // Before Pickups: on phones it then sits beside the short cards instead of below the
+  // full-width Pickups list.
+  body += card(manual ? "Set this lineup in Yahoo" : "Your best lineup", d.starters.map(p =>
+    row(`<span class="m">${esc(p.slot)}</span> ${who(p)}`, `${game(p)} · ${pts(p.proj)}`)), "");
+
+  // Yahoo: players hidden as taken are listed inside Pickups (or alone when Pickups is empty).
+  const hiddenList = manual && manual.hidden.length ? `<p class="m hidden-list">Hidden as taken: ${manual.hidden.map(x =>
+      `${esc(x.name)} <button data-untake="${esc(x.id)}">Show</button>`).join(" · ")}</p>` : "";
+  if (!d.pickups.length && hiddenList) body += hiddenList;
+  add(d.pickups.length, "Pickups: none worth it", card("Pickups", [...d.pickups.map(w =>
     row(`${who(w.add)} ${status(w.add, manual)}${taken(w.add, manual)}<br>
          <span class="m">${game(w.add)} · proj ${pts(w.add.proj)}${owned(w.add, manual)}</span>`,
         `+${pts(w.gain)} this week · ${w.drop ? "drop " + esc(w.drop.name) : "no drop needed"}<br>rest of season ${w.ros_delta >= 0 ? "+" : ""}${pts(w.ros_delta)}`)),
-    "No free agent would crack your lineup this week.");
+    hiddenList].filter(Boolean), "No free agent would crack your lineup this week."));
 
-  if (manual && manual.hidden.length) {
-    h += `<p class="m hidden-list">Hidden as taken: ${manual.hidden.map(x =>
-      `${esc(x.name)} <button data-untake="${esc(x.id)}">Show</button>`).join(" · ")}</p>`;
-  }
 
-  h += card("Bye weeks ahead", d.bye_crunch.map(c =>
+  add(d.bye_crunch.length, `Byes: covered for ${d.constants.bye_lookahead} weeks`, card("Bye weeks ahead", d.bye_crunch.map(c =>
     row(`<b>Week ${c.week}</b>: only ${slotsText(c.short)}<br>
          <span class="m">On bye: ${c.on_bye.map(p => `${esc(p.name)} (${esc(p.pos)})`).join(", ")}</span>`,
         `<span class="pill warn">plan a pickup</span>`)),
     `<span class="good">Your lineup is covered for the next ${d.constants.bye_lookahead} weeks.</span>`,
-    d.bye_crunch.length ? "warn" : "");
+    "warn"));
 
   if (d.stash.length) {
-    h += card("Stash (on bye now, worth holding)", d.stash.map(w =>
+    body += card("Stash (on bye now, worth holding)", d.stash.map(w =>
       row(`${who(w.add)} ${status(w.add, manual)}${taken(w.add, manual)}<br>
            <span class="m">on bye this week · scores 0 now</span>`,
           `rest of season <b class="good">+${pts(w.ros_delta)}</b><br>${w.drop ? "drop " + esc(w.drop.name) : "no drop needed"}`)), "");
   }
 
-  h += card(manual ? "Set this lineup in Yahoo" : "Your best lineup", d.starters.map(p =>
-    row(`<span class="m">${esc(p.slot)}</span> ${who(p)}`, `${game(p)} · ${pts(p.proj)}`)), "");
-
-  h += `<section class="card setup">
+  body += `<section class="card setup">
     <h2>Weekly reminder</h2>
     <p class="m">Adds a repeating Wednesday 9 AM event to your phone's calendar, after waivers clear.
        Change the day or time in your calendar. It ends after the fantasy playoffs.</p>
     <a class="button" href="${REMINDER_URL}">Add to my calendar</a>
   </section>`;
   if (manual) {
-    h += `<section class="card setup">
+    body += `<section class="card setup">
     <h2>Use this league on another device</h2>
     <p class="m">Makes a link with your roster in it. Send it to the other phone, and paste it there.</p>
     <button id="send-league">Make a link</button>
     <div id="transfer"></div>
   </section>`;
   }
+  if (clear.length) h += `<div class="clear">${clear.map(c => `<span class="chip">${esc(c)}</span>`).join("")}</div>`;
+  h += `<div class="cards">${body}</div>`;
   return h;
 }
 

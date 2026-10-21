@@ -14,6 +14,7 @@ import { isNative, makeGet, capacitorCore } from "./transport.js";
 import { espnLogin } from "./login.js";
 import * as store from "./store.js";
 import * as ui from "./ui.js";
+import { packCards, repackOnResize } from "./layout.js";
 
 const APK_URL = "https://github.com/notalegacybug/fantasyfootball/releases/latest/download/roster-optimizer.apk";
 // Transfer links always point at the website: inside the Android app the origin is localhost.
@@ -21,7 +22,9 @@ const SITE = "https://fantasyfootball-af1.pages.dev";
 const HOUR = 3600e3;
 
 const $ = s => document.querySelector(s);
-const show = html => { $("#app").innerHTML = html; };
+// The This-week cards are packed into two gap-free columns; other screens have no .cards.
+const show = html => { $("#app").innerHTML = html; packCards($("#app .cards")); };
+repackOnResize($("#app"), () => $("#app .cards"));
 
 let cookies = store.load("cookies");          // Android only: {espn_s2, swid}
 let settings = store.load("settings", {});    // {leagueId, teamId}

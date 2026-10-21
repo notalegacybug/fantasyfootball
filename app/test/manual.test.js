@@ -138,24 +138,42 @@ test("week page, Yahoo mode: set-this-lineup card, Taken buttons, no lineup-chan
   const page = pageJson(build(cfg));
   const html = weekPage(page, { edited: "today", hidden: [{ id: 7, name: "Hidden Guy" }] });
   assert.match(html, /Set this lineup in Yahoo/);
-  assert.doesNotMatch(html, /Lineup changes/);
+  assert.doesNotMatch(html, /Lineup changes|Lineup: already/);
   assert.doesNotMatch(html, /No opponent/);
   assert.match(html, /id="edit-roster"/);
   assert.match(html, /data-untake="7"/);
   if (page.pickups.length) assert.match(html, new RegExp(`data-taken="${page.pickups[0].add.id}"`));
   const espnHtml = weekPage(page);
-  assert.match(espnHtml, /Lineup changes/, "ESPN mode unchanged");
+  assert.match(espnHtml, /Lineup changes|Lineup: already the best/, "ESPN mode unchanged");
   assert.doesNotMatch(espnHtml, /data-taken/);
 });
 
 test("week page: close calls sit right under the start/sit advice, before pickups", () => {
   const page = pageJson(build(sampleConfig()));
+  const s = page.starters[0];   // something in every card, so none fold into a chip
+  Object.assign(page, { ir_moves: [{ player: s, from: "BENCH", to: "IR", reason: "x" }],
+    deltas: [{ slot: "QB", in: s, out: s, gain: 1 }], close_calls: [{ slot: "QB", starter: s, alt: s, margin: 1 }],
+    pickups: [{ add: s, drop: null, gain: 1, ros_delta: 1 }] });
   const titles = html => [...html.matchAll(/<h2>([^<(]+)/g)].map(m => m[1].trim());
   const espn = titles(weekPage(page));
   assert.equal(espn[espn.indexOf("Lineup changes") + 1], "Close calls");
   const yahoo = titles(weekPage(page, { edited: "today", hidden: [] }));
   assert.equal(yahoo[yahoo.indexOf("IR moves") + 1], "Close calls", "Yahoo mode has no lineup-changes card");
   assert.ok(yahoo.indexOf("Close calls") < yahoo.indexOf("Pickups"));
+});
+
+test("week page: cards with nothing to do fold into chips; cards with work stay cards", () => {
+  const page = pageJson(build(sampleConfig()));
+  Object.assign(page, { problems: [], ir_moves: [], deltas: [], close_calls: [], pickups: [], bye_crunch: [], stash: [] });
+  const html = weekPage(page);
+  for (const chip of ["Fix first: all clear", "IR: nothing to move", "Lineup: already the best",
+                      "Close calls: none", "Pickups: none worth it", "Byes: covered for 4 weeks"]) {
+    assert.match(html, new RegExp(`class="chip">${chip}<`));
+  }
+  assert.deepEqual([...html.matchAll(/<h2>([^<]+)/g)].map(m => m[1]), ["Your best lineup", "Weekly reminder"]);
+  page.problems = [{ player: page.starters[0], kind: "low", message: "projected 1.0" }];
+  assert.match(weekPage(page), /<h2>Fix first/);
+  assert.doesNotMatch(weekPage(page), /Fix first: all clear/);
 });
 
 test("search results: not-found message, add buttons, nothing under 2 letters", () => {

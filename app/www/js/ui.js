@@ -67,6 +67,12 @@ export function weekPage(d, manual = null) {
       `<span class="good">None. Your lineup is already the best one.</span>`);
   }
 
+  // Right after the start/sit advice: these are start/sit decisions too, just too close to call.
+  h += card(`Close calls (under ${d.constants.close_call_margin} pts)`, d.close_calls.map(c =>
+    row(`${esc(c.slot)} · ${esc(c.starter.name)} ${pts(c.starter.proj)} over ${esc(c.alt.name)} ${pts(c.alt.proj)}`,
+        `<span class="pill warn">${pts(c.margin)} pts</span> started ${pts(c.starter.started_pct)}% / ${pts(c.alt.started_pct)}%`)),
+    "No start/sit decisions are close.", "warn");
+
   h += card("Pickups", d.pickups.map(w =>
     row(`${who(w.add)} ${status(w.add, manual)}${taken(w.add, manual)}<br>
          <span class="m">${game(w.add)} · proj ${pts(w.add.proj)}${owned(w.add, manual)}</span>`,
@@ -91,11 +97,6 @@ export function weekPage(d, manual = null) {
            <span class="m">on bye this week · scores 0 now</span>`,
           `rest of season <b class="good">+${pts(w.ros_delta)}</b><br>${w.drop ? "drop " + esc(w.drop.name) : "no drop needed"}`)), "");
   }
-
-  h += card(`Close calls (under ${d.constants.close_call_margin} pts)`, d.close_calls.map(c =>
-    row(`${esc(c.slot)} · ${esc(c.starter.name)} ${pts(c.starter.proj)} over ${esc(c.alt.name)} ${pts(c.alt.proj)}`,
-        `<span class="pill warn">${pts(c.margin)} pts</span> started ${pts(c.starter.started_pct)}% / ${pts(c.alt.started_pct)}%`)),
-    "No start/sit decisions are close.", "warn");
 
   h += card(manual ? "Set this lineup in Yahoo" : "Your best lineup", d.starters.map(p =>
     row(`<span class="m">${esc(p.slot)}</span> ${who(p)}`, `${game(p)} · ${pts(p.proj)}`)), "");
@@ -246,6 +247,8 @@ export function howItWorksPage(c) {
       predicted points go into empty IR spots, which frees a bench spot.`)}
     ${item("Lineup changes", `Every legal lineup is tried (QB, RB, WR, TE, FLEX...). If yours is already the
       highest-scoring one, it says so.`)}
+    ${item("Close calls", `Start/sit choices less than ${c.margin} points apart. Basically a coin flip, so
+      go with your gut.`)}
     ${item("Pickups", `Each free agent is tried on your team in place of your weakest bench player (lowest
       rest-of-season prediction, so a good player on bye is never cut). The top ${c.shortlist} that raise
       this week's score are shown.`)}
@@ -253,8 +256,6 @@ export function howItWorksPage(c) {
       fill every starting spot, it names the week and who's off, so you can pick someone up early.`)}
     ${item("Stash", `A free agent on bye this week scores 0, so he never shows in Pickups. If his
       rest-of-season prediction beats your weakest bench player's by ${c.stashMin} or more, he's listed here.`)}
-    ${item("Close calls", `Start/sit choices less than ${c.margin} points apart. Basically a coin flip, so
-      go with your gut.`)}
     ${item("Locked", `That player's game has started. ESPN won't let you move him, so the app doesn't suggest it.`)}
     <p class="m">Private leagues: a website can't read them (browsers keep your ESPN sign-in to ESPN).
        Make the league public, or use the Android app, which signs in for you.</p>

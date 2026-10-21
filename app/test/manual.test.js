@@ -148,6 +148,16 @@ test("week page, Yahoo mode: set-this-lineup card, Taken buttons, no lineup-chan
   assert.doesNotMatch(espnHtml, /data-taken/);
 });
 
+test("week page: close calls sit right under the start/sit advice, before pickups", () => {
+  const page = pageJson(build(sampleConfig()));
+  const titles = html => [...html.matchAll(/<h2>([^<(]+)/g)].map(m => m[1].trim());
+  const espn = titles(weekPage(page));
+  assert.equal(espn[espn.indexOf("Lineup changes") + 1], "Close calls");
+  const yahoo = titles(weekPage(page, { edited: "today", hidden: [] }));
+  assert.equal(yahoo[yahoo.indexOf("IR moves") + 1], "Close calls", "Yahoo mode has no lineup-changes card");
+  assert.ok(yahoo.indexOf("Close calls") < yahoo.indexOf("Pickups"));
+});
+
 test("search results: not-found message, add buttons, nothing under 2 letters", () => {
   const rows = [{ player_id: 5, name: "A <b>", pos: "WR", pro_team_id: 1 }];
   assert.equal(searchResults(rows, "a", () => "X"), "");

@@ -7,7 +7,7 @@
 //   GET  /api/yahoo/v2/<path>   -> relay to Yahoo (GET only); 401 {"error":"signin"} if not signed in
 //   POST /api/yahoo/logout      -> forget the tokens
 
-import { authUrl, parseCookies, setCookie, relayTarget, swapToken } from "../../_lib/yahoo.js";
+import { REDIRECT_URI, authUrl, parseCookies, setCookie, relayTarget, swapToken } from "../../_lib/yahoo.js";
 
 const RT_AGE = 400 * 24 * 3600;  // refresh token: long-lived
 const STATE_AGE = 600;           // sign-in must finish within 10 minutes
@@ -28,13 +28,12 @@ export async function onRequest({ request, env, params }) {
   const url = new URL(request.url);
   const [head, ...rest] = [params.path].flat();
   const cookies = parseCookies(request.headers.get("Cookie"));
-  const redirectUri = `${url.origin}/api/yahoo/callback`;
 
   if (head === "login" && request.method === "GET") {
     const state = crypto.randomUUID();
     return new Response(null, {
       status: 302,
-      headers: { Location: authUrl(env, state, redirectUri), "Set-Cookie": setCookie("yh_state", state, STATE_AGE) },
+      headers: { Location: authUrl(env, state), "Set-Cookie": setCookie("yh_state", state, STATE_AGE) },
     });
   }
 
@@ -45,7 +44,7 @@ export async function onRequest({ request, env, params }) {
     if (!state || !code || state !== cookies.yh_state) return json({ error: "bad state" }, 400);
     let t;
     try {
-      t = await swapToken(env, { grant_type: "authorization_code", code, redirect_uri: redirectUri }, fetchFn);
+      t = await swapToken(env, { grant_type: "authorization_code", code, redirect_uri: REDIRECT_URI }, fetchFn);
     } catch { return json({ error: "token swap failed" }, 502); }
     return withTokens(new Response(null, { status: 302, headers: { Location: "/#yahoo-signed-in" } }), t);
   }
@@ -63,14 +62,25 @@ export async function onRequest({ request, env, params }) {
 
     let access = cookies.yh_at;
     let fresh = null;
-    if (!access) {
-      if (!cookies.yh_rt) return signin();
+    const refresh = async () => {
+      if (!cookies.yh_rt) return false;
       try {
-        fresh = await swapToken(env, { grant_type: "refresh_token", refresh_token: cookies.yh_rt, redirect_uri: redirectUri }, fetchFn);
-      } catch { return signin(); }
+        fresh = await swapToken(env, { grant_type: "refresh_token", refresh_token: cookies.yh_rt, redirect_uri: REDIRECT_URI }, fetchFn);
+      } catch { return false; }
       access = fresh.access_token;
+      return true;
+    };
+    const get = () => fetchFn(target, { headers: { Authorization: `Bearer ${access}`, Accept: "application/json" } });
+
+    if (!access && !(await refresh())) return signin();
+    let upstream = await get();
+    // Yahoo can revoke a token before its cookie expires. Refresh once and retry once;
+    // if that doesn't work either, the user needs to sign in again.
+    if (upstream.status === 401) {
+      if (fresh || !(await refresh())) return signin();
+      upstream = await get();
+      if (upstream.status === 401) return signin();
     }
-    const upstream = await fetchFn(target, { headers: { Authorization: `Bearer ${access}`, Accept: "application/json" } });
     const res = new Response(await upstream.text(), {
       status: upstream.status,
       headers: { "Content-Type": "application/json" },

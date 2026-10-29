@@ -4,11 +4,15 @@
 const LOGIN = "https://api.login.yahoo.com/oauth2";
 const API = "https://fantasysports.yahooapis.com/fantasy/v2/";
 
+// Fixed on purpose: Yahoo requires this to match the registered app exactly, so we never
+// derive it from the incoming request.
+export const REDIRECT_URI = "https://fantasyfootball-af1.pages.dev/api/yahoo/callback";
+
 // Read-only scope on purpose: the app can look at leagues but never change them.
-export function authUrl(env, state, redirectUri) {
+export function authUrl(env, state) {
   const q = new URLSearchParams({
     client_id: env.YAHOO_CLIENT_ID,
-    redirect_uri: redirectUri,
+    redirect_uri: REDIRECT_URI,
     response_type: "code",
     scope: "fspt-r",
     state,

@@ -45,6 +45,7 @@ test("login redirects to Yahoo and stores the same state in a cookie", async () 
   assert.equal(loc.searchParams.get("response_type"), "code");
   const cookie = find(res, "yh_state");
   assert.ok(cookie);
+  assert.equal(loc.searchParams.get("redirect_uri"), "https://fantasyfootball-af1.pages.dev/api/yahoo/callback");
   assert.equal(cookie.split(";")[0].split("=")[1], loc.searchParams.get("state"));
 });
 
@@ -67,6 +68,7 @@ test("callback with a good state sets both token cookies and goes home", async (
   }
   assert.ok(find(res, "yh_at").includes("Max-Age=3540"));
   assert.equal(env.calls[0].url, "https://api.login.yahoo.com/oauth2/get_token");
+  assert.match(env.calls[0].init.body, /redirect_uri=https%3A%2F%2Ffantasyfootball-af1\.pages\.dev%2Fapi%2Fyahoo%2Fcallback/);
   assert.equal(env.calls[0].init.headers.Authorization, "Basic " + btoa("dummy-id:dummy-secret"));
 });
 
@@ -125,4 +127,41 @@ test("POST to the relay is 405; logout clears all three cookies; unknown path is
   assert.equal(out.status, 204);
   for (const n of ["yh_rt", "yh_at", "yh_state"]) assert.ok(find(out, n).includes("Max-Age=0"), n);
   assert.equal((await call(fakeEnv(), "GET", "nothing")).status, 404);
+});
+
+test("a revoked access token is refreshed once and the call retried", async () => {
+  const env = fakeEnv([
+    { status: 401, body: { error: "revoked" } },
+    { body: { access_token: "NEW", refresh_token: "RT2", expires_in: 3600 } },
+    { body: { fantasy_content: { ok: 1 } } },
+  ]);
+  const res = await call(env, "GET", "v2/league/1", { cookie: "yh_at=OLD; yh_rt=RT" });
+  assert.equal(res.status, 200);
+  assert.equal(env.calls.length, 3);
+  assert.match(env.calls[1].init.body, /grant_type=refresh_token/);
+  assert.equal(env.calls[2].init.headers.Authorization, "Bearer NEW");
+  assert.ok(find(res, "yh_at").startsWith("yh_at=NEW"));
+  assert.ok(find(res, "yh_rt").startsWith("yh_rt=RT2"));
+});
+
+test("a revoked access token with no refresh token, a failed refresh, or a failed retry says sign in", async () => {
+  const noRt = fakeEnv([{ status: 401, body: {} }]);
+  const a = await call(noRt, "GET", "v2/league/1", { cookie: "yh_at=OLD" });
+  assert.equal(a.status, 401);
+  assert.deepEqual(await a.json(), { error: "signin" });
+
+  const badRefresh = fakeEnv([{ status: 401, body: {} }, { status: 400, body: {} }]);
+  const b = await call(badRefresh, "GET", "v2/league/1", { cookie: "yh_at=OLD; yh_rt=RT" });
+  assert.equal(b.status, 401);
+  assert.deepEqual(await b.json(), { error: "signin" });
+
+  const stillBad = fakeEnv([
+    { status: 401, body: {} },
+    { body: { access_token: "NEW", refresh_token: "RT2", expires_in: 3600 } },
+    { status: 401, body: {} },
+  ]);
+  const c = await call(stillBad, "GET", "v2/league/1", { cookie: "yh_at=OLD; yh_rt=RT" });
+  assert.equal(c.status, 401);
+  assert.deepEqual(await c.json(), { error: "signin" });
+  assert.equal(stillBad.calls.length, 3);
 });

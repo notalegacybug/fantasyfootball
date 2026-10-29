@@ -1,0 +1,60 @@
+# Free iPhone test build: an UNSIGNED real-device .ipa for Sideloadly (Windows) to sign with a
+# free Apple ID. The app then runs on that person's own iPhone for 7 days, then needs re-signing.
+# Runs only from the ios-sideload branch, so normal pushes never build it. Saved as a workflow
+# artifact, not a release: a release would become "latest" and break the website's Android link.
+name: ios-sideload
+
+on:
+  push:
+    branches: [ios-sideload]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Tests
+        run: node --test
+
+      - name: Install Capacitor
+        run: npm install --no-audit --no-fund
+
+      - name: Vendor @capacitor/core for the no-bundler web code
+        run: mkdir -p www/vendor && cp node_modules/@capacitor/core/dist/index.js www/vendor/capacitor-core.js
+
+      - name: Generate and patch the iOS project
+        run: |
+          npx cap add ios
+          node scripts/patch-ios.mjs
+          npx cap sync ios
+
+      - name: Build for real iPhones (unsigned)
+        working-directory: app/ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tail -n 40
+          test "${PIPESTATUS[0]}" -eq 0
+
+      # An .ipa is just the .app inside a Payload/ folder, zipped.
+      - name: Package the .ipa
+        working-directory: app/ios/App
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qry ../../RosterOptimizer-unsigned.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RosterOptimizer-unsigned-ipa
+          path: app/RosterOptimizer-unsigned.ipa
+          retention-days: 30

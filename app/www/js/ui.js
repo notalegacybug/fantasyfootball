@@ -22,18 +22,26 @@ function card(title, rows, empty, cls = "") {
 }
 const row = (left, right) => `<div class="row"><span>${left}</span><span class="m">${right}</span></div>`;
 
-// Yahoo-by-hand doesn't know waivers vs free agent, so no pill there.
-const status = (p, manual) => (manual ? "" : `<span class="pill ${p.status === "WAIVERS" ? "warn" : "ok"}">${p.status === "WAIVERS" ? "waivers" : "free agent"}</span>`);
+// For these helpers `yahoo` is true for both Yahoo modes (by hand, or read from Yahoo).
+// Yahoo modes don't know waivers vs free agent, so no pill there.
+const status = (p, yahoo) => (yahoo ? "" : `<span class="pill ${p.status === "WAIVERS" ? "warn" : "ok"}">${p.status === "WAIVERS" ? "waivers" : "free agent"}</span>`);
 const taken = (p, manual) => (manual ? ` <button class="taken" data-taken="${p.id}">Taken</button>` : "");
 // season.js words its IR advice for ESPN; the rules are the same in Yahoo, only the name differs.
-const site = (text, manual) => (manual ? text.replace("ESPN can block", "Yahoo can block") : text);
+const site = (text, yahoo) => (yahoo ? text.replace("ESPN can block", "Yahoo can block") : text);
 // ESPN's owned % is ESPN players' ownership, not this Yahoo league's, so Yahoo mode leaves it out.
-const owned = (p, manual) => (manual ? "" : ` · owned ${p.owned_change > 0 ? "+" : ""}${pts(p.owned_change)}% this week`);
+const owned = (p, yahoo) => (yahoo ? "" : ` · owned ${p.owned_change > 0 ? "+" : ""}${pts(p.owned_change)}% this week`);
 
 // manual: null for ESPN leagues; for Yahoo-by-hand {edited: "3 days ago", hidden: [{id, name}]}.
-export function weekPage(d, manual = null) {
+// opts.yahoo: a league read from Yahoo (a real lineup and opponent, so ESPN's layout, but
+// Yahoo's words). opts.oddScoring: the league scores plays ESPN's predictions don't count.
+export function weekPage(d, manual = null, { yahoo: fromYahoo = false, oddScoring = false } = {}) {
+  const yahoo = Boolean(manual) || fromYahoo;
   const gain = d.optimal_total - d.current_total;
   let h = "";
+  if (oddScoring) {
+    h += `<p class="m">This league scores some plays differently from usual (like 6-point passing TDs or bonuses).
+      ESPN's predictions use the usual points, so treat them as a close guess.</p>`;
+  }
   if (manual) {
     h += `<div class="row"><span class="m">Roster edited ${esc(manual.edited)}</span><span><button id="edit-roster">Edit roster</button>
       <button id="league-settings">League settings</button></span></div>
@@ -67,11 +75,11 @@ export function weekPage(d, manual = null) {
   let body = "";
   const add = (n, chip, html) => { if (n) body += html; else clear.push(chip); };
   add(d.problems.length, "Fix first: all clear", card("Fix first", d.problems.map(x =>
-    row(`${who(x.player)}${"backup" in x ? ifOut(x) : noBackup(x.player)}`, esc(site(x.message, manual)))),
+    row(`${who(x.player)}${"backup" in x ? ifOut(x) : noBackup(x.player)}`, esc(site(x.message, yahoo)))),
     `<span class="good">All clear.</span>`, "danger"));
 
   add(d.ir_moves.length, "IR: nothing to move", card("IR moves", d.ir_moves.map(m =>
-    row(who(m.player), `${m.from.toLowerCase()} &rarr; ${m.to.toLowerCase()} · ${esc(site(m.reason, manual))}`)),
+    row(who(m.player), `${m.from.toLowerCase()} &rarr; ${m.to.toLowerCase()} · ${esc(site(m.reason, yahoo))}`)),
     "Nothing to move."));
 
   if (!manual) {
@@ -97,8 +105,8 @@ export function weekPage(d, manual = null) {
       `${esc(x.name)} <button data-untake="${esc(x.id)}">Show</button>`).join(" · ")}</p>` : "";
   if (!d.pickups.length && hiddenList) body += hiddenList;
   add(d.pickups.length, "Pickups: none worth it", card("Pickups", [...d.pickups.map(w =>
-    row(`${who(w.add)} ${status(w.add, manual)}${taken(w.add, manual)}<br>
-         <span class="m">${game(w.add)} · proj ${pts(w.add.proj)}${owned(w.add, manual)}</span>`,
+    row(`${who(w.add)} ${status(w.add, yahoo)}${taken(w.add, manual)}<br>
+         <span class="m">${game(w.add)} · proj ${pts(w.add.proj)}${owned(w.add, yahoo)}</span>`,
         `+${pts(w.gain)} this week · ${w.drop ? "drop " + esc(w.drop.name) : "no drop needed"}<br>rest of season ${w.ros_delta >= 0 ? "+" : ""}${pts(w.ros_delta)}`)),
     hiddenList].filter(Boolean), "No free agent would crack your lineup this week."));
 
@@ -112,7 +120,7 @@ export function weekPage(d, manual = null) {
 
   if (d.stash.length) {
     body += card("Stash (on bye now, worth holding)", d.stash.map(w =>
-      row(`${who(w.add)} ${status(w.add, manual)}${taken(w.add, manual)}<br>
+      row(`${who(w.add)} ${status(w.add, yahoo)}${taken(w.add, manual)}<br>
            <span class="m">on bye this week · scores 0 now</span>`,
           `rest of season <b class="good">+${pts(w.ros_delta)}</b><br>${w.drop ? "drop " + esc(w.drop.name) : "no drop needed"}`)), "");
   }
@@ -149,7 +157,11 @@ export function transferBox(link) {
 // browser, which hands the .ics file to the calendar app. (A local file would just load in the app.)
 const REMINDER_URL = "https://fantasyfootball-af1.pages.dev/remind.ics";
 
-export function setupPage(leagueId, error, yahoo = [], importError = null) {
+// The Yahoo sign-in. A plain link: the whole page goes to Yahoo and comes back to /#yahoo-signed-in.
+const YAHOO_LOGIN = "/api/yahoo/login";
+
+// yahooBeta: show "Sign in to Yahoo" (hidden until the device has opened /#yahoo-beta once).
+export function setupPage(leagueId, error, yahoo = [], importError = null, yahooBeta = false) {
   return `<section class="card setup">
     <h2>Your ESPN league</h2>
     <p class="m">Find the league ID in your ESPN league's web address: <code>...leagueId=<b>1234567</b></code></p>
@@ -161,6 +173,8 @@ export function setupPage(leagueId, error, yahoo = [], importError = null) {
   </section>
   <section class="card setup">
     <h2>Yahoo league</h2>
+    ${yahooBeta ? `<p class="m">Test version: sign in and the app reads your Yahoo league itself.</p>
+    <a class="button primary" id="yahoo-signin" href="${YAHOO_LOGIN}">Sign in to Yahoo</a>` : ""}
     <p class="m">Yahoo doesn't let apps read leagues yet. Enter your roster once and the app uses ESPN's predictions.</p>
     ${yahoo.map(y => `<button class="yahoo-open" data-id="${esc(y.id)}">Open ${esc(y.name)}</button>`).join("")}
     <button id="yahoo-new">My league is on Yahoo — enter my roster</button>
@@ -170,6 +184,35 @@ export function setupPage(leagueId, error, yahoo = [], importError = null) {
       <button type="submit">Add league</button>
     </form>
     ${importError ? `<p class="field-err">${esc(importError)}</p>` : ""}
+  </section>`;
+}
+
+// After Yahoo sign-in, when the account has no football league or more than one.
+export function yahooLeaguesPage(leagues) {
+  if (!leagues.length) {
+    return `<section class="card setup">
+    <h2>No Yahoo football leagues on this account</h2>
+    <p class="m">Check that this is the Yahoo account that's in the league. You can also enter your roster by hand.</p>
+    <button id="yahoo-new">Enter my roster by hand</button>
+    <button id="change-league">Use a different league</button>
+  </section>`;
+  }
+  return `<section class="card setup">
+    <h2>Which Yahoo league?</h2>
+    <p class="m">Remembered on this device.</p>
+    ${leagues.map(l => `<button class="yahoo-league" data-key="${esc(l.key)}">${esc(l.name)} <span class="m">${esc(l.numTeams)} teams</span></button>`).join("")}
+    <button id="change-league">Use a different league</button>
+  </section>`;
+}
+
+// Yahoo's sign-in has run out (or was never done on this device). One tap fixes it.
+export function yahooSignInPage(message) {
+  return `<section class="card setup">
+    <h2>Sign in to Yahoo again</h2>
+    <p>${esc(message)}</p>
+    <p class="m">Yahoo's own page opens, then brings you back here. Your password goes only to Yahoo.</p>
+    <a class="button primary" href="${YAHOO_LOGIN}">Sign in to Yahoo</a>
+    <button id="change-league">Use a different league</button>
   </section>`;
 }
 

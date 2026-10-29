@@ -32,6 +32,30 @@ export function flat(v) {
 // The values of a numbered map, in order: {"0":a, "1":b, "count":2} -> [a, b].
 export const list = m => Object.entries(m || {}).filter(([k]) => /^\d+$/.test(k)).map(([, v]) => v);
 
+// ---- Fetching, through the site's own relay (functions/api/yahoo) ----
+// `get(url, headers)` is injected, as in espn.js. The sign-in cookies are HttpOnly, so the
+// page can't see them: the relay's 401 {"error":"signin"} is the only "sign in again" signal.
+
+const RELAY = "/api/yahoo/v2";
+
+export class YahooSignInError extends Error {}
+
+async function getYahoo(get, path) {
+  const r = await get(`${RELAY}/${path}`, {});
+  if (r.status === 401 && r.data?.error === "signin") throw new YahooSignInError("Sign in to Yahoo again.");
+  if (r.status < 200 || r.status >= 300) throw new Error(`Yahoo answered ${r.status}.`);
+  // A page that isn't Yahoo's JSON would otherwise read as "no leagues".
+  if (!r.data?.fantasy_content) throw new Error("Yahoo's answer wasn't readable.");
+  return r.data;
+}
+
+// The current season's NFL leagues of the signed-in user (game_keys=nfl is this season's game).
+export const fetchMyLeagues = get => getYahoo(get, "users;use_login=1/games;game_keys=nfl/leagues");
+
+// One call for everything a week needs; see the CALL SHAPE note above parseLeagueBundle.
+export const fetchLeagueBundle = (get, leagueKey) =>
+  getYahoo(get, `league/${leagueKey};out=settings,standings,scoreboard/teams/roster`);
+
 // users;use_login=1/games;game_keys=nfl/leagues -> the user's NFL leagues.
 export function parseLeagues(raw) {
   const out = [];
@@ -170,6 +194,8 @@ export function parseLeagueBundle(raw) {
 // Rostered players come from Yahoo (slot, injury); the ESPN pool row adds the predictions.
 // A rostered player ESPN doesn't list is kept as `missing` with no predictions, the same shape
 // buildManualState uses. Free agents are the pool rows nobody in the league has.
+// status is null for everyone, as in buildManualState: ESPN's FREEAGENT/WAIVERS describes an
+// ESPN league, not this one, and the page would draw a pill from it.
 export function buildYahooState(bundle, poolRows, pro, { nowMs = Date.now() } = {}) {
   const { season, week } = bundle;
   const idx = poolIndex(poolRows, pro);
@@ -186,13 +212,14 @@ export function buildYahooState(bundle, poolRows, pro, { nowMs = Date.now() } = 
       const base = row ?? { player_id: `yahoo:${yp.team}:${yp.name}`, name: yp.name, pos: yp.pos,
         eligible: yp.eligible, pro_team_id: proId.get(espnTeam(yp.team)) ?? null, proj_week: null,
         proj_ros: null, pct_started: null, pct_change: null, outlook: null };
-      return { ...toPlayer({ ...base, injury: yp.status, slot: yp.slot }), missing: !row };
+      return { ...toPlayer({ ...base, injury: yp.status, slot: yp.slot, status: null }), missing: !row };
     }),
   }));
 
   const mine = bundle.teams.find(t => t.mine);
   if (!mine) throw new Error("Couldn't tell which team is yours in this league.");
-  const freeAgents = poolRows.filter(r => r.pos && !taken.has(r.player_id)).map(toPlayer);
+  const freeAgents = poolRows.filter(r => r.pos && !taken.has(r.player_id))
+    .map(r => toPlayer({ ...r, status: null }));
 
   return new SeasonState({ season, week, slots: bundle.slots, teams, schedule: bundle.schedule,
                            pro, freeAgents, myTeamId: mine.id });

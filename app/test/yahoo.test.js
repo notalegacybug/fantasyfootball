@@ -8,7 +8,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { parseFreeAgents, parseProSchedule } from "../www/js/espn.js";
 import { flat, list, parseLeagues, parseYahooPlayer, matchPlayer, poolIndex, espnTeam,
-  parseLeagueBundle, buildYahooState } from "../www/js/yahoo.js";
+  parseLeagueBundle, buildYahooState, fetchMyLeagues, fetchLeagueBundle, YahooSignInError } from "../www/js/yahoo.js";
+import { weekPage } from "../www/js/ui.js";
 import { pageJson } from "../www/js/report.js";
 import { execFileSync } from "node:child_process";
 
@@ -193,4 +194,51 @@ test("buildYahooState: pageJson runs end to end; season.js and report.js are unt
   assert.equal(page.week, 9);
   assert.equal(page.opponent.name, "Second");
   execFileSync("git", ["diff", "--exit-code", "www/js/season.js", "www/js/report.js"], { cwd: new URL("..", import.meta.url) });
+});
+
+test("buildYahooState: every player's status is null (ESPN's free agent / waivers isn't this league's)", () => {
+  const st = buildYahooState(bundleOf(raw), pool, pro, { nowMs: NOW });
+  const all = [...st.teams.flatMap(t => t.roster), ...st.freeAgents];
+  assert.ok(pool.some(r => r.status), "the ESPN pool does carry a status");
+  assert.deepEqual(all.filter(p => p.status !== null).map(p => p.name), []);
+});
+
+// ---- Task 5: fetchers (through the site's relay) and the week page ----
+const recorder = (status, data) => {
+  const urls = [];
+  const get = async (url, headers) => { urls.push(url); assert.deepEqual(headers, {}); return { status, data }; };
+  return { get, urls };
+};
+
+test("fetchMyLeagues / fetchLeagueBundle: relay URLs, data returned as-is", async () => {
+  const a = recorder(200, { fantasy_content: 1 });
+  assert.deepEqual(await fetchMyLeagues(a.get), { fantasy_content: 1 });
+  await fetchLeagueBundle(a.get, "470.l.1314371");
+  assert.deepEqual(a.urls, [
+    "/api/yahoo/v2/users;use_login=1/games;game_keys=nfl/leagues",
+    "/api/yahoo/v2/league/470.l.1314371;out=settings,standings,scoreboard/teams/roster",
+  ]);
+});
+
+test("fetchers: 401 {error: signin} -> YahooSignInError; other failures are plain errors", async () => {
+  await assert.rejects(fetchMyLeagues(recorder(401, { error: "signin" }).get), YahooSignInError);
+  await assert.rejects(fetchLeagueBundle(recorder(401, { error: "signin" }).get, "k"), YahooSignInError);
+  // No relay (local preview): a 404 page that isn't JSON.
+  const e404 = await fetchMyLeagues(recorder(404, null).get).catch(e => e);
+  assert.ok(!(e404 instanceof YahooSignInError));
+  assert.match(e404.message, /Yahoo answered 404/);
+  const e401 = await fetchMyLeagues(recorder(401, { error: "other" }).get).catch(e => e);
+  assert.ok(!(e401 instanceof YahooSignInError));
+  // A 200 that isn't Yahoo's JSON (an HTML page) must not read as "no leagues".
+  await assert.rejects(fetchMyLeagues(recorder(200, null).get), /Yahoo/);
+});
+
+test("weekPage (Yahoo): no free agent pill or ESPN owned %, odd scoring note only when flagged", () => {
+  const page = pageJson(buildYahooState(bundleOf(raw), pool, pro, { nowMs: NOW }));
+  assert.ok(page.pickups.length > 0);
+  const html = weekPage(page, null, { yahoo: true });
+  assert.doesNotMatch(html, /free agent<\/span>|owned [+-]?\d/);
+  assert.match(html, new RegExp(page.opponent.name));
+  assert.doesNotMatch(html, /scores some plays differently/);
+  assert.match(weekPage(page, null, { yahoo: true, oddScoring: true }), /scores some plays differently/);
 });

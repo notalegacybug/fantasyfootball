@@ -3,6 +3,10 @@
 //   league ID --(401)--> Android: sign in to ESPN | web: "private, use the app"
 //            --(ok)----> team known? (saved pick, or the signed-in SWID's team)
 //                        no -> pick team -> This week
+//
+//   Yahoo (web, hidden beta): sign in -> /#yahoo-signed-in -> the account's leagues
+//            0 -> "none" + hand entry | 1 -> open it | 2+ -> pick one -> This week
+//            relay says "sign in" (401) anywhere -> "Sign in to Yahoo again"
 
 import * as espn from "./espn.js";
 import { buildState, findMyTeamId } from "./state.js";
@@ -10,6 +14,7 @@ import { pageJson } from "./report.js";
 import { LOW_PROJECTION_FLAG, CLOSE_CALL_MARGIN, WAIVER_SHORTLIST, BYE_LOOKAHEAD,
          STASH_MIN_ROS_GAIN, rosterLimit } from "./season.js";
 import * as manual from "./manual.js";
+import * as yahoo from "./yahoo.js";
 import { isNative, makeGet, capacitorCore } from "./transport.js";
 import { espnLogin } from "./login.js";
 import * as store from "./store.js";
@@ -29,8 +34,10 @@ repackOnResize($("#app"), () => $("#app .cards"));
 let cookies = store.load("cookies");          // Android only: {espn_s2, swid}
 let settings = store.load("settings", {});    // {leagueId, teamId}
 
-// settings is ESPN {leagueId, teamId} or Yahoo-by-hand {source: "manual", manualId}.
+// settings is ESPN {leagueId, teamId}, Yahoo-by-hand {source: "manual", manualId},
+// or Yahoo read through the site's relay {source: "yahoo", leagueKey}.
 const isManual = () => settings.source === "manual";
+const isYahoo = () => settings.source === "yahoo";
 const manualKey = id => `manual.${id}`;
 let manualCfg = null;     // the open Yahoo setup
 let manualData = null;    // {season, week, rows, pro}: lets Taken/Show redraw without ESPN
@@ -82,20 +89,22 @@ async function currentWeek(get, season) {
   return w;
 }
 
+// ESPN's predictions for one scoring type and week, plus the NFL schedule. forWeek: Yahoo's
+// current week for a Yahoo league; null (hand entry) means ESPN's current week.
 // One cache key per scoring type, overwritten each week: a key per week would fill
 // localStorage (~300 KB a week) by mid-season.
-async function loadManualData(cfg, force) {
+async function loadPool(scoring, forWeek, force) {
   const get = makeGet(null);
-  const key = `pool.${cfg.scoring}`;
+  const key = `pool.${scoring}`;
   const season = await currentSeason(get);
-  const [week, pro] = await Promise.all([currentWeek(get, season), proSchedule(get, season)]);
+  const [week, pro] = await Promise.all([forWeek ?? currentWeek(get, season), proSchedule(get, season)]);
   const fresh = store.loadFresh(key, 12 * HOUR);
   if (!force && fresh && fresh.season === season && fresh.week === week) {
     return { season, week, rows: fresh.rows, pro };
   }
   const fetchRows = async id => espn.parseFreeAgents(
     await espn.fetchPlayerPool(get, season, week, id), season, week);
-  const rows = await manual.poolFor(fetchRows, cfg.scoring);
+  const rows = await manual.poolFor(fetchRows, scoring);
   store.saveFresh(key, { season, week, rows });
   return { season, week, rows, pro };
 }
@@ -114,7 +123,7 @@ const editedText = at => {
 // bare: a form with its own Cancel, so no Refresh/League buttons that would leave it.
 function header(bare = false) {
   const signedIn = isNative() && cookies;
-  const league = !bare && (settings.leagueId || isManual());
+  const league = !bare && (settings.leagueId || isManual() || isYahoo());
   $("#nav-right").innerHTML = [
     `<span id="age"></span>`,
     league ? `<button id="refresh">Refresh</button>` : "",
@@ -140,7 +149,7 @@ function askLeague(error, importError) {
   history.replaceState(null, "", "/");
   const yahoo = store.load("manualIds", [])
     .map(id => ({ id, name: store.load(manualKey(id))?.name })).filter(y => y.name);
-  show(ui.setupPage(settings.leagueId, error, yahoo, importError));
+  show(ui.setupPage(settings.leagueId, error, yahoo, importError, store.load("yahooBeta", false)));
   header();
   $("#yahoo-new").addEventListener("click", () => yahooNew());
   $("#import-form").addEventListener("submit", e => {
@@ -284,7 +293,7 @@ async function rosterScreen() {
     show(ui.loadingPage("Loading ESPN's player list..."));
     // Assigned only if still current: a late load for another Yahoo league must not stick.
     let data;
-    try { data = await loadManualData(manualCfg, false); }
+    try { data = await loadPool(manualCfg.scoring, null, false); }
     catch (e) { if (gen === screenGen) show(ui.errorBox(`Couldn't reach ESPN: ${e.message}`)); return; }
     if (gen !== screenGen) return;
     manualData = data;
@@ -375,7 +384,7 @@ async function startManual({ force = false } = {}) {
   show(ui.loadingPage("Reading ESPN's predictions..."));
   let data, offline = false;
   try {
-    data = await loadManualData(manualCfg, force);
+    data = await loadPool(manualCfg.scoring, null, force);
   } catch (e) {
     // No network: fall back to this session's load, else the predictions saved on the phone.
     const pool = store.load(`pool.${manualCfg.scoring}`)?.value;
@@ -387,6 +396,78 @@ async function startManual({ force = false } = {}) {
   manualData = data;
   showManualWeek();
   if (offline) $("#age").textContent = "couldn't reach ESPN, showing saved predictions";
+}
+
+// ---- Yahoo, read through the site's relay (hidden beta) ----
+
+// Back from Yahoo's sign-in: list the account's leagues, then open or offer them.
+// The list is fetched before any league so an expired access token is refreshed by this one
+// call, not by several at once.
+async function yahooSignedIn() {
+  const gen = ++screenGen;
+  history.replaceState(null, "", "/");
+  header(true);
+  show(ui.loadingPage("Reading your Yahoo leagues..."));
+  let leagues;
+  try { leagues = yahoo.parseLeagues(await yahoo.fetchMyLeagues(makeGet(null))); }
+  catch (e) {
+    if (gen !== screenGen) return;
+    if (e instanceof yahoo.YahooSignInError) return yahooSignIn();
+    askLeague();
+    $("#app").insertAdjacentHTML("afterbegin", ui.errorBox(`Couldn't read your Yahoo leagues: ${e.message}`));
+    return;
+  }
+  if (gen !== screenGen) return;
+  if (leagues.length === 1) return openYahoo(leagues[0].key);
+  show(ui.yahooLeaguesPage(leagues));
+  $("#yahoo-new")?.addEventListener("click", () => yahooNew());
+  $("#change-league")?.addEventListener("click", () => askLeague());
+  for (const b of document.querySelectorAll("button.yahoo-league")) {
+    b.addEventListener("click", () => openYahoo(b.dataset.key));
+  }
+}
+
+function openYahoo(leagueKey) {
+  settings = { source: "yahoo", leagueKey };
+  store.save("settings", settings);
+  start();
+}
+
+function yahooSignIn() {
+  screenGen++;
+  header(true);
+  show(ui.yahooSignInPage("Yahoo needs you to sign in again before the app can read your league."));
+  $("#change-league").addEventListener("click", () => askLeague());
+}
+
+function showYahooWeek({ page, at, oddScoring }, note) {
+  show(ui.weekPage(page, null, { yahoo: true, oddScoring }));
+  const mins = Math.round((Date.now() - at) / 60e3);
+  $("#age").textContent = `Yahoo data ${mins < 1 ? "just now" : mins + " min old"}${note ? " · " + note : ""}`;
+}
+
+// Like ESPN's start(): the last good page shows at once, then the fresh one replaces it.
+async function startYahoo({ force = false } = {}) {
+  const gen = ++screenGen;
+  const stale = () => gen !== screenGen;
+  history.replaceState(null, "", "/");
+  const cacheKey = `page.yahoo.${settings.leagueKey}`;
+  const cached = store.load(cacheKey);
+  if (cached && !force) showYahooWeek(cached, "updating...");
+  else show(ui.loadingPage("Reading your league from Yahoo..."));
+  try {
+    const bundle = yahoo.parseLeagueBundle(await yahoo.fetchLeagueBundle(makeGet(null), settings.leagueKey));
+    const { rows, pro } = await loadPool(bundle.scoring, bundle.week, force);
+    const saved = { page: pageJson(yahoo.buildYahooState(bundle, rows, pro)), at: Date.now(),
+                    oddScoring: bundle.oddScoring };
+    store.save(cacheKey, saved);
+    if (!stale()) showYahooWeek(saved);
+  } catch (e) {
+    if (stale()) return;
+    if (e instanceof yahoo.YahooSignInError) return yahooSignIn();
+    if (cached) return showYahooWeek(cached, "couldn't reach Yahoo or ESPN, showing saved copy");
+    show(ui.errorBox(`Couldn't read your Yahoo league: ${e.message}`));
+  }
 }
 
 function showWeek(page, at, note) {
@@ -407,6 +488,7 @@ async function start({ force = false } = {}) {
   const stale = () => gen !== screenGen;
   header();
   if (isManual()) return startManual({ force });
+  if (isYahoo()) return startYahoo({ force });
   if (!settings.leagueId) return askLeague();
   history.replaceState(null, "", `/league/${settings.leagueId}`);
   const cacheKey = `page.${settings.leagueId}.${settings.teamId ?? "me"}`;
@@ -460,6 +542,14 @@ if (isNative()) {
     const launch = await App.getLaunchUrl().catch(() => null);
     openLeague(fromAppUrl(launch?.url));
   }).catch(e => show(ui.errorBox(`App failed to start: ${e.message}`)));
+} else if (location.hash === "#yahoo-beta") {
+  // Opening /#yahoo-beta once shows "Sign in to Yahoo" on this device (hidden until it works).
+  store.save("yahooBeta", true);
+  history.replaceState(null, "", location.pathname);
+  openLeague(leagueFromPath(location.pathname));
+} else if (location.hash === "#yahoo-signed-in") {
+  // Back from Yahoo's sign-in (functions/api/yahoo: the callback redirects here).
+  yahooSignedIn();
 } else if (location.hash.startsWith("#yahoo=")) {
   // A transfer link tapped (laptop, Android browser): add it, then drop it from the address bar.
   const link = location.hash;

@@ -7,7 +7,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { parseFreeAgents, parseProSchedule } from "../www/js/espn.js";
-import { flat, list, parseLeagues, parseYahooPlayer, matchPlayer, poolIndex, espnTeam } from "../www/js/yahoo.js";
+import { flat, list, parseLeagues, parseYahooPlayer, matchPlayer, poolIndex, espnTeam,
+  parseLeagueBundle, buildYahooState } from "../www/js/yahoo.js";
+import { pageJson } from "../www/js/report.js";
+import { execFileSync } from "node:child_process";
 
 const fix = name => JSON.parse(readFileSync(new URL(`../../fixtures/${name}`, import.meta.url)));
 const P = fix("espn_pool_ppr.json");
@@ -15,7 +18,8 @@ const pool = parseFreeAgents(P.raw, P.season, P.week).filter(r => r.pos);
 const pro = parseProSchedule(fix("espn_pro_schedule.json"));
 const index = poolIndex(pool, pro);
 
-const league = fix("yahoo_league.json").fantasy_content.league[1].teams;
+const raw = fix("yahoo_league.json");
+const league = flat(raw.fantasy_content.league).teams;
 const gibbs = league[0].team[1].roster[0].players[0].player;
 
 // A Yahoo player in the real shape, with just the fields the parser reads.
@@ -96,8 +100,8 @@ test("list: walks league teams and roster players; empty or missing collections 
   const teams = list(league).map(t => flat(t.team[0]).name);
   assert.deepEqual(teams, ["Gibbs Bunch", "Second", "Third", "Fourth"]);
   const roster = list(list(league)[0].team[1].roster[0].players).map(x => parseYahooPlayer(x.player).name);
-  assert.deepEqual(roster, ["Jahmyr Gibbs"]);
-  assert.deepEqual(list(list(league)[1].team[1].roster[0].players), []);
+  assert.deepEqual(roster, ["Jahmyr Gibbs", "Josh Allen", "Nobody Atall", "Seattle"]);
+  assert.deepEqual(list(list(league)[3].team[1].roster[0].players), []);
   assert.deepEqual(list([]), []);
   assert.deepEqual(list(undefined), []);
 });
@@ -118,4 +122,75 @@ test("parseYahooPlayer: any PUP* or NFI* status is injury reserve", () => {
   for (const s of ["PUP-P", "NFI-A", "PUP", "NFI-R"])
     assert.equal(parseYahooPlayer(yp("X", "Was", "WR", { status: s })).status, "INJURY_RESERVE", s);
   assert.equal(parseYahooPlayer(yp("X", "Was", "WR", { status: "SUSP" })).status, "SUSPENSION");
+});
+
+// ---- Task 4: the league bundle -> SeasonState ----
+const NOW = Date.UTC(2026, 9, 28);
+const bundleOf = r => parseLeagueBundle(r);
+const withSlots = positions => {
+  const r = structuredClone(raw);
+  const s = r.fantasy_content.league.find(x => x.settings).settings[0];
+  s.roster_positions = positions.map(position => ({ roster_position: { position, count: 1 } }));
+  return r;
+};
+
+test("parseLeagueBundle: week, scoring, slots, my team, standings and schedule", () => {
+  const b = bundleOf(raw);
+  assert.equal(b.week, 9);
+  assert.equal(b.season, 2026);
+  assert.equal(b.scoring, "ppr");
+  assert.equal(b.oddScoring, false);
+  assert.deepEqual(b.slots, { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, K: 1, DST: 1, BENCH: 6, IR: 1 });
+  assert.deepEqual(b.teams.filter(t => t.mine).map(t => t.id), [1]);
+  assert.deepEqual([b.teams[0].wins, b.teams[0].losses, b.teams[0].points_for, b.teams[0].points_against], [5, 3, 901.5, 880.25]);
+  assert.deepEqual(b.schedule, [{ period: 9, home: 1, away: 2 }, { period: 9, home: 3, away: 4 }]);
+  assert.equal(b.teams[0].roster[0].name, "Jahmyr Gibbs");
+});
+
+test("parseLeagueBundle: scoring by receptions value, odd scoring by passing TD or bonuses", () => {
+  const edit = f => { const r = structuredClone(raw); f(r.fantasy_content.league.find(x => x.settings).settings[0].stat_modifiers.stats); return bundleOf(r); };
+  assert.equal(edit(s => { s[1].stat.value = "0.5"; }).scoring, "half");
+  assert.equal(edit(s => { s[1].stat.value = "0"; }).scoring, "standard");
+  assert.equal(edit(s => { s[0].stat.value = "6"; }).oddScoring, true);
+  assert.equal(edit(s => { s[0].stat.bonuses = [{ bonus: { target: 300, points: 3 } }]; }).oddScoring, true);
+});
+
+test("parseLeagueBundle: an unmapped roster position throws and names it", () => {
+  assert.throws(() => bundleOf(withSlots(["QB", "DB"])), /roster spot the app doesn't handle yet: DB\./);
+});
+
+test("buildYahooState: matched keeps ESPN predictions with Yahoo's slot/injury; unmatched is missing", () => {
+  const st = buildYahooState(bundleOf(raw), pool, pro, { nowMs: NOW });
+  const mine = st.me.roster;
+  const g = mine.find(p => p.name === "Jahmyr Gibbs");
+  assert.equal(g.proj_week, pool.find(r => r.name === "Jahmyr Gibbs").proj_week);
+  assert.deepEqual([g.slot, g.injury, g.missing], ["RB", "QUESTIONABLE", false]);
+  const n = mine.find(p => p.name === "Nobody Atall");
+  assert.deepEqual([n.missing, n.proj_week, n.slot, n.pos], [true, null, "BENCH", "WR"]);
+  assert.equal(st.myTeamId, 1);
+  assert.equal(st.week, 9);
+  assert.equal(st.opponent().name, "Second");
+});
+
+test("buildYahooState: no rostered player is a free agent", () => {
+  const st = buildYahooState(bundleOf(raw), pool, pro, { nowMs: NOW });
+  const rostered = new Set(st.teams.flatMap(t => t.roster.map(p => p.player_id)));
+  assert.ok(st.freeAgents.length > 0);
+  assert.ok(st.freeAgents.every(p => !rostered.has(p.player_id)));
+  assert.equal(st.freeAgents.length, pool.length - 5);   // Gibbs, Allen, Seattle, Nacua, Jackson
+});
+
+test("buildYahooState: no matchup for my team -> opponent() is null", () => {
+  const r = structuredClone(raw);
+  const sb = r.fantasy_content.league.find(x => x.scoreboard).scoreboard["0"].matchups;
+  delete sb["0"]; sb["0"] = sb["1"]; delete sb["1"]; sb.count = 1;   // only teams 3 v 4 play
+  const st = buildYahooState(bundleOf(r), pool, pro, { nowMs: NOW });
+  assert.equal(st.opponent(), null);
+});
+
+test("buildYahooState: pageJson runs end to end; season.js and report.js are untouched", () => {
+  const page = pageJson(buildYahooState(bundleOf(raw), pool, pro, { nowMs: NOW }));
+  assert.equal(page.week, 9);
+  assert.equal(page.opponent.name, "Second");
+  execFileSync("git", ["diff", "--exit-code", "www/js/season.js", "www/js/report.js"], { cwd: new URL("..", import.meta.url) });
 });

@@ -26,7 +26,7 @@ const gibbs = league[0].team[1].roster[0].players[0].player;
 // A Yahoo player in the real shape, with just the fields the parser reads.
 const yp = (full, abbr, pos, extra = {}) => [[
   { player_key: "470.p.1" }, { name: { full } }, { editorial_team_abbr: abbr },
-  { display_position: pos }, { eligible_positions: [{ position: pos }] }, ...(extra.status ? [{ status: extra.status }] : []),
+  { display_position: pos }, { eligible_positions: (extra.eligible ?? [pos]).map(position => ({ position })) }, ...(extra.status ? [{ status: extra.status }] : []),
 ], { selected_position: [{ coverage_type: "week", week: "9" }, { position: extra.slot ?? "BN" }] }];
 
 test("flat: one-key objects, empty arrays and numbered maps merge into one object", () => {
@@ -201,6 +201,35 @@ test("buildYahooState: every player's status is null (ESPN's free agent / waiver
   const all = [...st.teams.flatMap(t => t.roster), ...st.freeAgents];
   assert.ok(pool.some(r => r.status), "the ESPN pool does carry a status");
   assert.deepEqual(all.filter(p => p.status !== null).map(p => p.name), []);
+});
+
+test("parseYahooPlayer: bench and IR never count as positions he can play", () => {
+  const p = parseYahooPlayer(yp("X", "Det", "WR", { eligible: ["WR", "BN", "IR", "W/R/T"] }));
+  assert.deepEqual(p.eligible, ["WR", "FLEX"]);
+});
+
+test("buildYahooState: a matched player takes Yahoo's eligibility (a WR/TE here), else ESPN's", () => {
+  const te = pool.find(r => r.pos === "TE" && !r.eligible.includes("WR"));
+  const team = pro[te.pro_team_id].abbrev;
+  const b = bundleOf(raw);
+  b.teams[0].roster.push(parseYahooPlayer(yp(te.name, team, "TE", { eligible: ["WR", "TE", "W/R/T", "BN"] })));
+  let p = buildYahooState(b, pool, pro, { nowMs: NOW }).me.roster.find(x => x.name === te.name);
+  assert.deepEqual([p.missing, [...p.eligible].sort()], [false, ["FLEX", "TE", "WR"]]);
+
+  b.teams[0].roster[b.teams[0].roster.length - 1].eligible = [];
+  p = buildYahooState(b, pool, pro, { nowMs: NOW }).me.roster.find(x => x.name === te.name);
+  assert.deepEqual(p.eligible, te.eligible);
+});
+
+test("buildYahooState: an unmatched rostered player listed by ESPN under another team is no free agent", () => {
+  const r = pool.find(x => x.pos === "WR");
+  const other = Object.values(pro).find(t => t.abbrev !== pro[r.pro_team_id].abbrev).abbrev;
+  const b = bundleOf(raw);
+  b.teams[1].roster.push(parseYahooPlayer(yp(r.name, other, "WR")));
+  const st = buildYahooState(b, pool, pro, { nowMs: NOW });
+  assert.equal(st.teams[1].roster.find(x => x.name === r.name).missing, true);
+  assert.ok(!st.freeAgents.some(x => x.player_id === r.player_id));
+  assert.ok(buildYahooState(bundleOf(raw), pool, pro, { nowMs: NOW }).freeAgents.some(x => x.player_id === r.player_id));
 });
 
 // ---- Task 5: fetchers (through the site's relay) and the week page ----

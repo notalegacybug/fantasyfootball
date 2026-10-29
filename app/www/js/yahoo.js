@@ -73,10 +73,13 @@ export function parseLeagues(raw) {
 // PUP-P, NFI-A and the like are all season-long lists to us, so match them by prefix.
 const statusOf = s => YAHOO_STATUS[s] ?? (/^(PUP|NFI)/.test(s) ? "INJURY_RESERVE" : null);
 
+// Bench and IR are where a player sits, not positions he can play; they never go in `eligible`.
+const PLAYABLE = s => s !== "BENCH" && s !== "IR";
+
 // One Yahoo "player" array -> the fields the app uses, in app names.
 export function parseYahooPlayer(p) {
   const f = flat(p);
-  const slots = ps => (ps || []).map(x => YAHOO_SLOTS[x.position]).filter(Boolean);
+  const slots = ps => (ps || []).map(x => YAHOO_SLOTS[x.position]).filter(s => s && PLAYABLE(s));
   return {
     name: f.name?.full ?? "",
     team: String(f.editorial_team_abbr || "").toUpperCase(),
@@ -202,6 +205,9 @@ export function buildYahooState(bundle, poolRows, pro, { nowMs = Date.now() } = 
   const toPlayer = statePlayer(pro, week, nowMs);
   const proId = new Map(Object.entries(pro).map(([id, t]) => [t.abbrev, Number(id)]));
   const taken = new Set();
+  // A rostered player we couldn't match may still be in the pool under another team (traded,
+  // or a team spelling we don't know). He's on a roster, so don't offer him as a free agent.
+  const unmatched = new Set();
 
   const teams = bundle.teams.map(t => ({
     id: t.id, name: t.name, abbrev: null, owners: [], wins: t.wins, losses: t.losses, ties: t.ties,
@@ -209,8 +215,13 @@ export function buildYahooState(bundle, poolRows, pro, { nowMs = Date.now() } = 
     roster: t.roster.map(yp => {
       const row = matchPlayer(yp, idx);
       if (row) taken.add(row.player_id);
-      const base = row ?? { player_id: `yahoo:${yp.team}:${yp.name}`, name: yp.name, pos: yp.pos,
-        eligible: yp.eligible, pro_team_id: proId.get(espnTeam(yp.team)) ?? null, proj_week: null,
+      else if (yp.pos !== "DST") unmatched.add(nameKey(yp.name));
+      // Yahoo's list is this league's: a WR/TE in Yahoo can fill either spot here even when
+      // ESPN calls him only a TE. ESPN's list is the fallback when Yahoo gave none.
+      const eligible = (yp.eligible || []).filter(PLAYABLE);
+      const base = row ? { ...row, eligible: eligible.length ? eligible : row.eligible }
+        : { player_id: `yahoo:${yp.team}:${yp.name}`, name: yp.name, pos: yp.pos,
+        eligible, pro_team_id: proId.get(espnTeam(yp.team)) ?? null, proj_week: null,
         proj_ros: null, pct_started: null, pct_change: null, outlook: null };
       return { ...toPlayer({ ...base, injury: yp.status, slot: yp.slot, status: null }), missing: !row };
     }),
@@ -218,7 +229,8 @@ export function buildYahooState(bundle, poolRows, pro, { nowMs = Date.now() } = 
 
   const mine = bundle.teams.find(t => t.mine);
   if (!mine) throw new Error("Couldn't tell which team is yours in this league.");
-  const freeAgents = poolRows.filter(r => r.pos && !taken.has(r.player_id))
+  const freeAgents = poolRows.filter(r => r.pos && !taken.has(r.player_id)
+      && (r.pos === "DST" || !unmatched.has(nameKey(r.name))))
     .map(r => toPlayer({ ...r, status: null }));
 
   return new SeasonState({ season, week, slots: bundle.slots, teams, schedule: bundle.schedule,

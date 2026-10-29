@@ -161,7 +161,8 @@ const REMINDER_URL = "https://fantasyfootball-af1.pages.dev/remind.ics";
 const YAHOO_LOGIN = "/api/yahoo/login";
 
 // yahooBeta: show "Sign in to Yahoo" (hidden until the device has opened /#yahoo-beta once).
-export function setupPage(leagueId, error, yahoo = [], importError = null, yahooBeta = false) {
+// lastYahoo: {leagueKey, name} of the Yahoo league last opened through sign-in, or null.
+export function setupPage(leagueId, error, yahoo = [], importError = null, yahooBeta = false, lastYahoo = null) {
   return `<section class="card setup">
     <h2>Your ESPN league</h2>
     <p class="m">Find the league ID in your ESPN league's web address: <code>...leagueId=<b>1234567</b></code></p>
@@ -174,7 +175,8 @@ export function setupPage(leagueId, error, yahoo = [], importError = null, yahoo
   <section class="card setup">
     <h2>Yahoo league</h2>
     ${yahooBeta ? `<p class="m">Test version: sign in and the app reads your Yahoo league itself.</p>
-    <a class="button primary" id="yahoo-signin" href="${YAHOO_LOGIN}">Sign in to Yahoo</a>` : ""}
+    <a class="button primary" id="yahoo-signin" href="${YAHOO_LOGIN}">Sign in to Yahoo</a>
+    ${lastYahoo?.leagueKey ? `<button id="yahoo-api-open">Open ${esc(lastYahoo.name || "my Yahoo league")}</button>` : ""}` : ""}
     <p class="m">Yahoo doesn't let apps read leagues yet. Enter your roster once and the app uses ESPN's predictions.</p>
     ${yahoo.map(y => `<button class="yahoo-open" data-id="${esc(y.id)}">Open ${esc(y.name)}</button>`).join("")}
     <button id="yahoo-new">My league is on Yahoo — enter my roster</button>

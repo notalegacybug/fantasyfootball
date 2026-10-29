@@ -49,11 +49,49 @@ test("login redirects to Yahoo and stores the same state in a cookie", async () 
   assert.equal(cookie.split(";")[0].split("=")[1], loc.searchParams.get("state"));
 });
 
-test("callback with a mismatched state is rejected and fetches nothing", async () => {
+test("callback with a mismatched state goes back to the app's sign-in-failed page and fetches nothing", async () => {
   const env = fakeEnv();
   const res = await call(env, "GET", "callback", { search: "?code=abc&state=wrong", cookie: "yh_state=right" });
-  assert.equal(res.status, 400);
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get("location"), "/#yahoo-signin-failed");
   assert.equal(env.calls.length, 0);
+  assert.equal(cookiesOf(res).length, 0);
+});
+
+test("callback after the user taps Don't allow (?error=access_denied) goes back to the app", async () => {
+  const env = fakeEnv();
+  const res = await call(env, "GET", "callback", { search: "?error=access_denied&state=s1", cookie: "yh_state=s1" });
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get("location"), "/#yahoo-signin-failed");
+  assert.equal(env.calls.length, 0);
+});
+
+test("callback whose token swap fails goes back to the app with no token cookies", async () => {
+  const env = fakeEnv([{ status: 400, body: { error: "invalid_grant" } }]);
+  const res = await call(env, "GET", "callback", { search: "?code=abc&state=s1", cookie: "yh_state=s1" });
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get("location"), "/#yahoo-signin-failed");
+  assert.equal(cookiesOf(res).length, 0);
+});
+
+test("a refresh answer without a refresh_token keeps the old one", async () => {
+  const env = fakeEnv([
+    { body: { access_token: "NEW", expires_in: 3600 } },
+    { body: { fantasy_content: { ok: 1 } } },
+  ]);
+  const res = await call(env, "GET", "v2/league/1", { cookie: "yh_rt=RT1" });
+  assert.equal(res.status, 200);
+  assert.ok(find(res, "yh_rt").startsWith("yh_rt=RT1;"));
+  assert.ok(find(res, "yh_at").startsWith("yh_at=NEW"));
+});
+
+test("a token answer without expires_in still gives the access cookie a numeric Max-Age", async () => {
+  const env = fakeEnv([{ body: { access_token: "AT", refresh_token: "RT" } }]);
+  const res = await call(env, "GET", "callback", { search: "?code=abc&state=s1", cookie: "yh_state=s1" });
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get("location"), "/#yahoo-signed-in");
+  assert.match(find(res, "yh_at"), /Max-Age=3540;/);
+  assert.match(find(res, "yh_rt"), /Max-Age=\d+;/);
 });
 
 test("callback with a good state sets both token cookies and goes home", async () => {

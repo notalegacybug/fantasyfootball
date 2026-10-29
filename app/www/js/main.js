@@ -149,9 +149,14 @@ function askLeague(error, importError) {
   history.replaceState(null, "", "/");
   const yahoo = store.load("manualIds", [])
     .map(id => ({ id, name: store.load(manualKey(id))?.name })).filter(y => y.name);
-  show(ui.setupPage(settings.leagueId, error, yahoo, importError, store.load("yahooBeta", false)));
+  // The last Yahoo league opened through sign-in, kept apart from settings so it survives
+  // switching to an ESPN league. A league opened before yahooLast existed is still in settings.
+  const lastYahoo = store.load("yahooLast", null)
+    ?? (isYahoo() ? { leagueKey: settings.leagueKey, name: settings.name ?? null } : null);
+  show(ui.setupPage(settings.leagueId, error, yahoo, importError, store.load("yahooBeta", false), lastYahoo));
   header();
   $("#yahoo-new").addEventListener("click", () => yahooNew());
+  $("#yahoo-api-open")?.addEventListener("click", () => openYahoo(lastYahoo.leagueKey, lastYahoo.name));
   $("#import-form").addEventListener("submit", e => {
     e.preventDefault();
     try { addImported(manual.importLink($("#import-link").value)); }
@@ -418,25 +423,27 @@ async function yahooSignedIn() {
     return;
   }
   if (gen !== screenGen) return;
-  if (leagues.length === 1) return openYahoo(leagues[0].key);
+  if (leagues.length === 1) return openYahoo(leagues[0].key, leagues[0].name);
   show(ui.yahooLeaguesPage(leagues));
   $("#yahoo-new")?.addEventListener("click", () => yahooNew());
   $("#change-league")?.addEventListener("click", () => askLeague());
   for (const b of document.querySelectorAll("button.yahoo-league")) {
-    b.addEventListener("click", () => openYahoo(b.dataset.key));
+    b.addEventListener("click", () => openYahoo(b.dataset.key, leagues.find(l => l.key === b.dataset.key)?.name));
   }
 }
 
-function openYahoo(leagueKey) {
-  settings = { source: "yahoo", leagueKey };
+// The name is saved so the setup page can offer "Open <name>" to get back here.
+function openYahoo(leagueKey, name) {
+  settings = { source: "yahoo", leagueKey, name: name ?? null };
   store.save("settings", settings);
+  store.save("yahooLast", { leagueKey, name: name ?? null });
   start();
 }
 
-function yahooSignIn() {
+function yahooSignIn(message = "Yahoo needs you to sign in again before the app can read your league.") {
   screenGen++;
   header(true);
-  show(ui.yahooSignInPage("Yahoo needs you to sign in again before the app can read your league."));
+  show(ui.yahooSignInPage(message));
   $("#change-league").addEventListener("click", () => askLeague());
 }
 
@@ -550,6 +557,10 @@ if (isNative()) {
 } else if (location.hash === "#yahoo-signed-in") {
   // Back from Yahoo's sign-in (functions/api/yahoo: the callback redirects here).
   yahooSignedIn();
+} else if (location.hash === "#yahoo-signin-failed") {
+  // Yahoo's sign-in didn't finish ("Don't allow" tapped, or it timed out): say so, offer it again.
+  history.replaceState(null, "", "/");
+  yahooSignIn("Yahoo sign-in didn't finish. Try again.");
 } else if (location.hash.startsWith("#yahoo=")) {
   // A transfer link tapped (laptop, Android browser): add it, then drop it from the address bar.
   const link = location.hash;

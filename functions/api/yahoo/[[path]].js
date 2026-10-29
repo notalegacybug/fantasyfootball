@@ -15,12 +15,20 @@ const json = (body, status, headers) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...headers } });
 const signin = () => json({ error: "signin" }, 401);
 
-function withTokens(res, t) {
-  res.headers.append("Set-Cookie", setCookie("yh_rt", t.refresh_token, RT_AGE));
+// oldRt: Yahoo may leave refresh_token out of a refresh answer; then the old one still works,
+// so keep it rather than store "undefined". A missing expires_in falls back to Yahoo's usual hour.
+function withTokens(res, t, oldRt) {
+  const rt = t.refresh_token || oldRt;
+  if (rt) res.headers.append("Set-Cookie", setCookie("yh_rt", rt, RT_AGE));
   // Expire the access token a minute early so we never send one that's about to die.
-  res.headers.append("Set-Cookie", setCookie("yh_at", t.access_token, Math.max(t.expires_in - 60, 0)));
+  const life = Number(t.expires_in) || 3600;
+  res.headers.append("Set-Cookie", setCookie("yh_at", t.access_token, Math.max(life - 60, 0)));
   return res;
 }
+
+// Any sign-in failure (the user tapped "Don't allow", a stale or forged state, a failed token
+// swap) goes back to the app, which says so; raw JSON would be a dead end in a Home Screen app.
+const signinFailed = () => new Response(null, { status: 302, headers: { Location: "/#yahoo-signin-failed" } });
 
 export async function onRequest({ request, env, params }) {
   // Tests pass a stub through env.fetch; in production this is the global fetch.
@@ -41,11 +49,11 @@ export async function onRequest({ request, env, params }) {
     const state = url.searchParams.get("state");
     const code = url.searchParams.get("code");
     // The state must match the cookie we set at login, or this isn't our sign-in.
-    if (!state || !code || state !== cookies.yh_state) return json({ error: "bad state" }, 400);
+    if (!state || !code || state !== cookies.yh_state) return signinFailed();
     let t;
     try {
       t = await swapToken(env, { grant_type: "authorization_code", code, redirect_uri: REDIRECT_URI }, fetchFn);
-    } catch { return json({ error: "token swap failed" }, 502); }
+    } catch { return signinFailed(); }
     return withTokens(new Response(null, { status: 302, headers: { Location: "/#yahoo-signed-in" } }), t);
   }
 
@@ -85,7 +93,7 @@ export async function onRequest({ request, env, params }) {
       status: upstream.status,
       headers: { "Content-Type": "application/json" },
     });
-    return fresh ? withTokens(res, fresh) : res;
+    return fresh ? withTokens(res, fresh, cookies.yh_rt) : res;
   }
 
   return json({ error: "not found" }, ["login", "callback", "logout"].includes(head) ? 405 : 404);

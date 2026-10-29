@@ -153,7 +153,7 @@ function askLeague(error, importError) {
   // switching to an ESPN league. A league opened before yahooLast existed is still in settings.
   const lastYahoo = store.load("yahooLast", null)
     ?? (isYahoo() ? { leagueKey: settings.leagueKey, name: settings.name ?? null } : null);
-  show(ui.setupPage(settings.leagueId, error, yahoo, importError, store.load("yahooBeta", false), lastYahoo));
+  show(ui.setupPage(settings.leagueId, error, yahoo, importError, !isNative(), lastYahoo));
   header();
   $("#yahoo-new").addEventListener("click", () => yahooNew());
   $("#yahoo-api-open")?.addEventListener("click", () => openYahoo(lastYahoo.leagueKey, lastYahoo.name));
@@ -549,11 +549,6 @@ if (isNative()) {
     const launch = await App.getLaunchUrl().catch(() => null);
     openLeague(fromAppUrl(launch?.url));
   }).catch(e => show(ui.errorBox(`App failed to start: ${e.message}`)));
-} else if (location.hash === "#yahoo-beta") {
-  // Opening /#yahoo-beta once shows "Sign in to Yahoo" on this device (hidden until it works).
-  store.save("yahooBeta", true);
-  history.replaceState(null, "", location.pathname);
-  openLeague(leagueFromPath(location.pathname));
 } else if (location.hash === "#yahoo-signed-in") {
   // Back from Yahoo's sign-in (functions/api/yahoo: the callback redirects here).
   yahooSignedIn();

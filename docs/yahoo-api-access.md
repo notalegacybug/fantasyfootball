@@ -5,9 +5,11 @@ the Yahoo developer page (and, when built, in a Cloudflare secret).
 
 ## Where it stands
 
-**Access is live** (Yahoo email 2026-10-28, confirmed by a live test the same day).
-Nothing in the app uses the Yahoo API yet; Yahoo leagues are still entered by hand
-(`manual.js`). Next: design the `/api/yahoo/*` helper and `yahoo.js` adapter.
+**Live in the website** (2026-10-28). "Sign in to Yahoo" on the start screen reads the
+league through `/api/yahoo/*` (`functions/`) and `yahoo.js`. Tested on the kid's iPhone Home
+Screen app: the sign-in round trip comes back into the app. Hand entry (`manual.js`) stays
+as the fallback and is the only Yahoo path in the Android app. Cloudflare holds
+`YAHOO_CLIENT_ID` and `YAHOO_CLIENT_SECRET` (Production).
 
 | Step (from Yahoo's approval email) | Status |
 |---|---|

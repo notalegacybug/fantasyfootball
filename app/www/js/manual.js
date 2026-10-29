@@ -1,6 +1,7 @@
 // Yahoo by hand: the user's own roster + ESPN's public predictions -> the same SeasonState the
 // ESPN adapter builds, so season.js, report.js and the week page don't know the difference.
-// Yahoo's API needs a per-app approval we don't have yet (403, last checked 2026-10-15).
+// Since 2026-10-28 Yahoo sign-in (yahoo.js) is the main Yahoo path on the website; this stays
+// as the fallback, and is the only Yahoo path in the Android app.
 // Spec: docs/superpowers/specs/2026-10-15-yahoo-manual-roster-design.md
 
 import { bestLineup } from "./season.js";

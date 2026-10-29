@@ -78,7 +78,7 @@ export async function poolFor(fetchRows, scoring) {
 // "smith njigba" finds Smith-Njigba, "jamarr" finds Ja'Marr, "nunez" finds Núñez. iPhones type
 // curly apostrophes by default, so those are dropped like straight ones. Spaces are ignored
 // too, so "St.Brown" finds "St. Brown".
-const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+export const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
   .replace(/['\u2018\u2019.]/g, "").replace(/[^a-z0-9]+/g, "");
 
 export function searchPool(rows, query, excludeIds = new Set(), n = 8) {

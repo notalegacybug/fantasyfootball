@@ -270,4 +270,7 @@ test("weekPage (Yahoo): no free agent pill or ESPN owned %, odd scoring note onl
   assert.match(html, new RegExp(page.opponent.name));
   assert.doesNotMatch(html, /scores some plays differently/);
   assert.match(weekPage(page, null, { yahoo: true, oddScoring: true }), /scores some plays differently/);
+  // Yahoo's API terms: credit wherever its data shows; ESPN leagues don't carry it.
+  assert.match(html, /Fantasy data provided by\s+<a [^>]*>Yahoo Fantasy<\/a>/);
+  assert.doesNotMatch(weekPage(page), /Fantasy data provided by/);
 });

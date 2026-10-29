@@ -141,6 +141,11 @@ export function weekPage(d, manual = null, { yahoo: fromYahoo = false, oddScorin
   }
   if (clear.length) h += `<div class="clear">${clear.map(c => `<span class="chip">${esc(c)}</span>`).join("")}</div>`;
   h += `<div class="cards">${body}</div>`;
+  // Yahoo's API terms ask for this credit wherever its data shows. Hand entry uses only ESPN's data.
+  if (fromYahoo) {
+    h += `<p class="m credit">Fantasy data provided by
+      <a href="https://football.fantasysports.yahoo.com/" target="_blank" rel="noopener">Yahoo Fantasy</a></p>`;
+  }
   return h;
 }
 

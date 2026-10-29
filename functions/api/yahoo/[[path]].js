@@ -91,7 +91,8 @@ export async function onRequest({ request, env, params }) {
     }
     const res = new Response(await upstream.text(), {
       status: upstream.status,
-      headers: { "Content-Type": "application/json" },
+      // One person's league must never be served to another from a cache along the way.
+      headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store" },
     });
     return fresh ? withTokens(res, fresh, cookies.yh_rt) : res;
   }

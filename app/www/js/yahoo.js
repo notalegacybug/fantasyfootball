@@ -29,7 +29,7 @@ export function flat(v) {
 }
 
 // The values of a numbered map, in order: {"0":a, "1":b, "count":2} -> [a, b].
-const list = m => Object.entries(m || {}).filter(([k]) => /^\d+$/.test(k)).map(([, v]) => v);
+export const list = m => Object.entries(m || {}).filter(([k]) => /^\d+$/.test(k)).map(([, v]) => v);
 
 // users;use_login=1/games;game_keys=nfl/leagues -> the user's NFL leagues.
 export function parseLeagues(raw) {
@@ -45,6 +45,9 @@ export function parseLeagues(raw) {
   return out;
 }
 
+// PUP-P, NFI-A and the like are all season-long lists to us, so match them by prefix.
+const statusOf = s => YAHOO_STATUS[s] ?? (/^(PUP|NFI)/.test(s) ? "INJURY_RESERVE" : null);
+
 // One Yahoo "player" array -> the fields the app uses, in app names.
 export function parseYahooPlayer(p) {
   const f = flat(p);
@@ -55,7 +58,7 @@ export function parseYahooPlayer(p) {
     pos: YAHOO_SLOTS[f.display_position] ?? null,
     eligible: [...new Set(slots(f.eligible_positions))],
     slot: YAHOO_SLOTS[flat(f.selected_position).position] ?? null,
-    status: YAHOO_STATUS[f.status] ?? null,
+    status: statusOf(f.status),
   };
 }
 
@@ -64,20 +67,23 @@ export function parseYahooPlayer(p) {
 const SUFFIX = /[\s,]+(jr|sr|ii|iii|iv|v)\.?$/i;
 const nameKey = s => norm(String(s || "").replace(SUFFIX, ""));
 
-// Index the ESPN pool by name + ESPN team (defenses by team alone): the same name on two
-// teams stays two entries.
+// Index the ESPN pool by name + ESPN team (defenses by team alone). Each key keeps every row:
+// the same name on two teams is two keys; the same name on one team (rare) is two rows.
 export function poolIndex(rows, pro) {
   const idx = new Map();
   for (const r of rows) {
     const team = pro[r.pro_team_id]?.abbrev;
     if (!team) continue;
-    idx.set(r.pos === "DST" ? `DST|${team}` : `${nameKey(r.name)}|${team}`, r);
+    const key = r.pos === "DST" ? `DST|${team}` : `${nameKey(r.name)}|${team}`;
+    idx.set(key, [...(idx.get(key) || []), r]);
   }
   return idx;
 }
 
 // The pool row for a parsed Yahoo player, or null (not in ESPN's list: he has no predictions).
+// If several rows share name and team, the one with his position wins, else the first.
 export function matchPlayer(yp, idx) {
   const team = espnTeam(yp.team);
-  return idx.get(yp.pos === "DST" ? `DST|${team}` : `${nameKey(yp.name)}|${team}`) ?? null;
+  const rows = idx.get(yp.pos === "DST" ? `DST|${team}` : `${nameKey(yp.name)}|${team}`);
+  return rows ? (rows.find(r => r.pos === yp.pos) ?? rows[0]) : null;
 }

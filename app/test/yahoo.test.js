@@ -7,7 +7,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { parseFreeAgents, parseProSchedule } from "../www/js/espn.js";
-import { flat, parseLeagues, parseYahooPlayer, matchPlayer, poolIndex, espnTeam } from "../www/js/yahoo.js";
+import { flat, list, parseLeagues, parseYahooPlayer, matchPlayer, poolIndex, espnTeam } from "../www/js/yahoo.js";
 
 const fix = name => JSON.parse(readFileSync(new URL(`../../fixtures/${name}`, import.meta.url)));
 const P = fix("espn_pool_ppr.json");
@@ -90,4 +90,32 @@ test("espnTeam: all 32 Yahoo abbrevs map to a distinct ESPN abbrev", () => {
     "Jax", "KC", "LAC", "LAR", "LV", "Mia", "Min", "NE", "NO", "NYG", "NYJ", "Phi", "Pit", "Sea", "SF", "TB", "Ten", "Was"];
   const mapped = yahoo.map(a => espnTeam(a.toUpperCase()));
   assert.deepEqual([...mapped].sort(), [...espn].sort());
+});
+
+test("list: walks league teams and roster players; empty or missing collections yield nothing", () => {
+  const teams = list(league).map(t => flat(t.team[0]).name);
+  assert.deepEqual(teams, ["Gibbs Bunch", "Second", "Third", "Fourth"]);
+  const roster = list(list(league)[0].team[1].roster[0].players).map(x => parseYahooPlayer(x.player).name);
+  assert.deepEqual(roster, ["Jahmyr Gibbs"]);
+  assert.deepEqual(list(list(league)[1].team[1].roster[0].players), []);
+  assert.deepEqual(list([]), []);
+  assert.deepEqual(list(undefined), []);
+});
+
+test("matchPlayer: same name and team but different positions match by position", () => {
+  const rows = [
+    { player_id: 1, name: "Zay Flowers", pos: "WR", pro_team_id: 33 },
+    { player_id: 2, name: "Zay Flowers", pos: "TE", pro_team_id: 33 },
+  ];
+  const idx = poolIndex(rows, pro);
+  const id = pos => matchPlayer(parseYahooPlayer(yp("Zay Flowers", "Bal", pos)), idx).player_id;
+  assert.equal(id("WR"), 1);
+  assert.equal(id("TE"), 2);
+  assert.equal(id("RB"), 1, "no position match falls back to the first row");
+});
+
+test("parseYahooPlayer: any PUP* or NFI* status is injury reserve", () => {
+  for (const s of ["PUP-P", "NFI-A", "PUP", "NFI-R"])
+    assert.equal(parseYahooPlayer(yp("X", "Was", "WR", { status: s })).status, "INJURY_RESERVE", s);
+  assert.equal(parseYahooPlayer(yp("X", "Was", "WR", { status: "SUSP" })).status, "SUSPENSION");
 });

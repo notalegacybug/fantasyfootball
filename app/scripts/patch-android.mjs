@@ -20,10 +20,12 @@ function replaceOnce(text, find, replacement, file) {
 const gradlePath = "android/app/build.gradle";
 let gradle = readFileSync(gradlePath, "utf8");
 if (!gradle.includes("VERSION_CODE")) {
+  // No space-then-paren after the property name: in Groovy `versionCode (x) as int` is
+  // `versionCode(x)` cast afterwards, which fails with "value is null".
   gradle = replaceOnce(gradle, "versionCode 1",
-    `versionCode (System.getenv("VERSION_CODE") ?: "1") as int`, gradlePath);
+    `versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "1")`, gradlePath);
   gradle = replaceOnce(gradle, `versionName "1.0"`,
-    `versionName "1.0." + (System.getenv("VERSION_CODE") ?: "0")`, gradlePath);
+    `versionName("1.0." + (System.getenv("VERSION_CODE") ?: "0"))`, gradlePath);
   gradle = replaceOnce(gradle, "    buildTypes {", `    signingConfigs {
         release {
             if (System.getenv("UPLOAD_KEYSTORE")) {

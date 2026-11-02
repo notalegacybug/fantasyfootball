@@ -6,7 +6,7 @@ name: android
 
 on:
   push:
-    branches: [main, in-season-m1]
+    branches: [main, in-season-m1, ios-sideload]   # main has no workflows, so no "Run workflow" button
     paths: ["app/**", "fixtures/**", ".github/workflows/android.yml"]
   workflow_dispatch:
 

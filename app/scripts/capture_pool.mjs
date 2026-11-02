@@ -1,7 +1,7 @@
 // Records a small, trimmed slice of ESPN's public player pool for the pool/manual tests.
 // Re-run when ESPN changes its format (the tests will fail first):
 //
-//     cd app && node test/capture_pool.mjs
+//     cd app && node scripts/capture_pool.mjs
 
 import { writeFileSync } from "node:fs";
 import { fetchCurrentSeason, fetchCurrentWeek, fetchPlayerPool } from "../www/js/espn.js";

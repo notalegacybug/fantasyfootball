@@ -33,7 +33,7 @@ jobs:
 
       - name: Generate and patch the iOS project
         run: |
-          npx cap add ios
+          npx cap add ios --packagemanager CocoaPods   # Capacitor 8 defaults to SPM; we build App.xcworkspace and use a Cordova plugin
           node scripts/patch-ios.mjs
           npx cap sync ios
 

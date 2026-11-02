@@ -6,7 +6,7 @@ name: android
 
 on:
   push:
-    branches: [main, in-season-m1]
+    branches: [main, in-season-m1, ios-sideload]   # main has no workflows, so no "Run workflow" button
     paths: ["app/**", "fixtures/**", ".github/workflows/android.yml"]
   workflow_dispatch:
 
@@ -16,6 +16,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      VERSION_CODE: ${{ github.run_number }}   # Play needs a higher number on every upload
     defaults:
       run:
         working-directory: app
@@ -53,6 +55,24 @@ jobs:
       - name: Name the APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk roster-optimizer.apk
 
+      # Google Play upload. The secrets reach only this step; the keystore is written to the
+      # runner's temp dir (wiped after the job) and never committed or attached to a release.
+      - name: Build signed release bundle (Google Play)
+        working-directory: app/android
+        env:
+          UPLOAD_KEYSTORE_B64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_B64 }}
+          UPLOAD_PASSWORD: ${{ secrets.ANDROID_UPLOAD_PASSWORD }}
+        run: |
+          export UPLOAD_KEYSTORE="$RUNNER_TEMP/upload.p12"
+          echo "$UPLOAD_KEYSTORE_B64" | base64 -d > "$UPLOAD_KEYSTORE"
+          ./gradlew bundleRelease --no-daemon
+          rm -f "$UPLOAD_KEYSTORE"
+
+      - name: Name and check the bundle
+        run: |
+          cp android/app/build/outputs/bundle/release/app-release.aab roster-optimizer.aab
+          jarsigner -verify roster-optimizer.aab | grep -q "jar verified" || { echo "AAB is not signed"; exit 1; }
+
       - name: Publish as the latest release
         uses: softprops/action-gh-release@v2
         with:
@@ -60,7 +80,10 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: RosterOptimizer test build ${{ github.run_number }}
           make_latest: true
-          files: app/roster-optimizer.apk
+          files: |
+            app/roster-optimizer.apk
+            app/roster-optimizer.aab
           body: |
-            Test build from ${{ github.ref_name }} @ ${{ github.sha }}.
-            Debug-signed: to update, uninstall the previous version first, then install this one.
+            Test build from ${{ github.ref_name }} @ ${{ github.sha }}, version code ${{ github.run_number }}.
+            roster-optimizer.apk is debug-signed: to update, uninstall the previous version first, then install this one.
+            roster-optimizer.aab is signed with the Play upload key: upload it in Play Console, don't install it.

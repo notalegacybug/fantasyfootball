@@ -2,7 +2,7 @@
 // at two clocks. week.test.js fails on ANY change to it, so a rule change has to be
 // deliberate: change the rule, regenerate, and read the diff of expected_week.json.
 //
-//     cd app && node test/make_expected.mjs
+//     cd app && node scripts/make_expected.mjs
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { buildState } from "../www/js/state.js";
@@ -28,6 +28,6 @@ for (const [name, now_ms] of Object.entries(scenarios)) {
   const { constants, ...page } = pageJson(buildState(raw, { swid: MY_SWID, nowMs: now_ms }));
   out[name] = { now_ms, page };
 }
-const path = new URL("./expected_week.json", import.meta.url);
+const path = new URL("../test/expected_week.json", import.meta.url);
 writeFileSync(path, JSON.stringify(out, null, 1) + "\n");
 console.log(`wrote app/test/expected_week.json: ${Object.keys(scenarios).join(", ")}`);

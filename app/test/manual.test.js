@@ -1,5 +1,5 @@
 // Yahoo-by-hand (manual.js): the saved roster + ESPN's public pool must give the same kind
-// of week page as an ESPN league. Fixtures: `node test/capture_pool.mjs`.
+// of week page as an ESPN league. Fixtures: `node scripts/capture_pool.mjs`.
 //
 //     cd app && node --test
 

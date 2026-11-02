@@ -1,5 +1,5 @@
 // The This-week page must give the recorded answers on the recorded ESPN fixtures.
-// Answer key: app/test/expected_week.json, written by `node test/make_expected.mjs`.
+// Answer key: app/test/expected_week.json, written by `node scripts/make_expected.mjs`.
 // A failure means a rule's answer changed: if you meant it, regenerate and read the diff.
 //
 //     cd app && node --test

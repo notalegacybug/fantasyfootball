@@ -1,5 +1,5 @@
 // ESPN's public player pool (Yahoo-by-hand's source of predictions) parses with the same
-// parser as league free agents. Fixtures: `node test/capture_pool.mjs`.
+// parser as league free agents. Fixtures: `node scripts/capture_pool.mjs`.
 //
 //     cd app && node --test
 
